@@ -6,6 +6,7 @@ using Cursivis.Windows.App.Controls;
 using Cursivis.Windows.App.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Cursivis.Windows.Platform.Hotkeys;
 
 namespace Cursivis.Windows.App.Pages;
 
@@ -14,6 +15,41 @@ public sealed partial class HotkeysPage : Page
     public HotkeysPage()
     {
         InitializeComponent();
+        ShowRuntimeRegistrations();
+    }
+
+    private void ShowRuntimeRegistrations()
+    {
+        AppRuntime? runtime = App.CurrentRuntime;
+        if (runtime is null)
+        {
+            return;
+        }
+
+        bool contextActive = runtime.ContextHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool cancelActive = runtime.CancelHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        if (contextActive)
+        {
+            ContextTriggerRecorder.ActiveChord = "Ctrl+Alt+O";
+            ContextTriggerRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (cancelActive)
+        {
+            CancelRecorder.ActiveChord = "Ctrl+Alt+Escape";
+            CancelRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (contextActive && cancelActive)
+        {
+            HotkeysHeader.StatusText = ResourceText.Get("HotkeysActiveStatus");
+            HotkeysHeader.StatusDetail = ResourceText.Get("HotkeysActiveStatusDetail");
+            RegistrationInfo.Severity = InfoBarSeverity.Success;
+            RegistrationInfo.Title = ResourceText.Get("HotkeysActiveInfoTitle");
+            RegistrationInfo.Message = ResourceText.Get("HotkeysActiveInfoMessage");
+        }
     }
 
     private IReadOnlyList<HotkeyRecorder> Recorders =>

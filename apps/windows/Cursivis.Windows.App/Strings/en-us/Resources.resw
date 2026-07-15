@@ -6,6 +6,89 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
   <data name="WindowTitle" xml:space="preserve"><value>Cursivis Settings</value></data>
+  <data name="ContextOrbWindowTitle" xml:space="preserve"><value>Cursivis Context Trigger</value></data>
+  <data name="ContextOrbAnalyzing.Text" xml:space="preserve"><value>Analyzing selection</value></data>
+  <data name="ContextOrbCancelHint.Text" xml:space="preserve"><value>Press Ctrl+Alt+Escape to cancel</value></data>
+  <data name="ContextOrbCapturingStatus" xml:space="preserve"><value>Reading selection</value></data>
+  <data name="ContextOrbAnalyzingStatus" xml:space="preserve"><value>Analyzing selection</value></data>
+  <data name="ContextOrbCancelHintText" xml:space="preserve"><value>Press Ctrl+Alt+Escape to cancel</value></data>
+  <data name="ContextOrbReadyStatus" xml:space="preserve"><value>Result ready</value></data>
+  <data name="ContextOrbReadyDetail" xml:space="preserve"><value>Review before copying or replacing</value></data>
+  <data name="ContextOrbCancelledStatus" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="ContextOrbCancelledDetail" xml:space="preserve"><value>No changes were made</value></data>
+  <data name="ContextOrbReplacingStatus" xml:space="preserve"><value>Replacing selection</value></data>
+  <data name="ContextOrbReplacedStatus" xml:space="preserve"><value>Selection replaced</value></data>
+  <data name="ContextOrbReplacedDetail" xml:space="preserve"><value>The original application accepted the replacement</value></data>
+
+  <data name="ContextResultWindowTitle" xml:space="preserve"><value>Cursivis Result</value></data>
+  <data name="ContextResultHeading.Text" xml:space="preserve"><value>Smart result</value></data>
+  <data name="ContextResultHeadingText" xml:space="preserve"><value>Smart result</value></data>
+  <data name="ContextResultGuidedHeading" xml:space="preserve"><value>Review suggested result</value></data>
+  <data name="ContextResultMetadataPending.Text" xml:space="preserve"><value>Waiting for a result</value></data>
+  <data name="ContextResultMetadataFormat" xml:space="preserve"><value>{0} · {1:P0} confidence</value></data>
+  <data name="ContextResultText.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Generated result content</value></data>
+  <data name="ContextResultCopyButton.Content" xml:space="preserve"><value>Copy</value></data>
+  <data name="ContextResultCopyButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Copy result</value></data>
+  <data name="ContextResultReplaceButton.Content" xml:space="preserve"><value>Replace selection</value></data>
+  <data name="ContextResultReplaceButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Replace the captured selection</value></data>
+  <data name="ContextResultCloseButton.Content" xml:space="preserve"><value>Close</value></data>
+  <data name="ContextResultCloseButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Close result</value></data>
+  <data name="ContextResultBrand.Text" xml:space="preserve"><value>Cursivis</value></data>
+  <data name="ContextResultUndoButton.Content" xml:space="preserve"><value>Undo</value></data>
+  <data name="ContextResultUndoButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Undo the last Cursivis insertion</value></data>
+  <data name="ContextResultInsertButton.Content" xml:space="preserve"><value>Insert</value></data>
+  <data name="ContextResultInsertButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Insert the result into the source application</value></data>
+  <data name="ContextResultTakeActionButton.Content" xml:space="preserve"><value>Take Action</value></data>
+  <data name="ContextResultTakeActionButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Take the suggested action</value></data>
+  <data name="ContextResultMoreOptionsButton.Content" xml:space="preserve"><value>More Options</value></data>
+  <data name="ContextResultMoreOptionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open Guided Mode for the captured context</value></data>
+  <data name="ContextResultThemeButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Switch result panel theme</value></data>
+  <data name="ContextResultSettingsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open Cursivis Settings</value></data>
+  <data name="ContextResultHeaderCloseButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Close result panel</value></data>
+  <data name="ContextResultCopyMenuItem.Text" xml:space="preserve"><value>Copy result</value></data>
+  <data name="ContextResultReplaceMenuItem.Text" xml:space="preserve"><value>Replace selection</value></data>
+  <data name="ContextResultRefineMenuItem.Text" xml:space="preserve"><value>Refine result</value></data>
+  <data name="ContextResultOutputLabel.Text" xml:space="preserve"><value>Output</value></data>
+  <data name="ContextResultKeyboardHint.Text" xml:space="preserve"><value>Esc close · Ctrl+C copy · Ctrl+Enter replace</value></data>
+  <data name="ContextResultRefineButton.Content" xml:space="preserve"><value>Refine</value></data>
+  <data name="ContextResultRefineButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Refine the current result</value></data>
+  <data name="ContextOrbMicrophoneButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Start voice input</value></data>
+  <data name="ContextOrbSettingsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open Cursivis Settings</value></data>
+  <data name="ContextOrbCancelButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Cancel the current Cursivis operation</value></data>
+  <data name="ContextOrbGuidedTitle.Text" xml:space="preserve"><value>Guided Mode</value></data>
+  <data name="ContextOrbGuidedSubtitle.Text" xml:space="preserve"><value>Choose an operation for the captured context, or enter a custom task.</value></data>
+  <data name="ContextOrbCustomTaskTextBox.PlaceholderText" xml:space="preserve"><value>Enter a custom task...</value></data>
+  <data name="ContextOrbCustomTaskTextBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Custom task instruction</value></data>
+  <data name="ContextOrbRunCustomTaskButton.Content" xml:space="preserve"><value>Run</value></data>
+  <data name="ContextOrbRunCustomTaskButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Run custom task on the captured context</value></data>
+  <data name="ContextOrbGuidedStatus" xml:space="preserve"><value>Choose an operation</value></data>
+  <data name="ContextOrbGuidedDetail" xml:space="preserve"><value>The original selection is ready</value></data>
+  <data name="ContextResultGuidedNoticeTitle" xml:space="preserve"><value>Intent may be ambiguous</value></data>
+  <data name="ContextResultGuidedNoticeMessage" xml:space="preserve"><value>Confidence is below the Smart Mode threshold. Review the result carefully before applying it.</value></data>
+  <data name="ContextResultFailureMetadata" xml:space="preserve"><value>No content was changed</value></data>
+  <data name="ContextResultNoSelectionTitle" xml:space="preserve"><value>No text selection found</value></data>
+  <data name="ContextResultNoSelectionMessage" xml:space="preserve"><value>Select text in the foreground application, then press Ctrl+Alt+O again.</value></data>
+  <data name="ContextResultForegroundChangedMessage" xml:space="preserve"><value>The foreground application changed during capture. Return to the source and try again.</value></data>
+  <data name="ContextResultCaptureUnavailableMessage" xml:space="preserve"><value>This application did not expose a supported text selection.</value></data>
+  <data name="ContextResultCaptureTimedOutMessage" xml:space="preserve"><value>Selection capture timed out without changing the clipboard.</value></data>
+  <data name="ContextResultProviderFailureTitle" xml:space="preserve"><value>OpenAI request did not complete</value></data>
+  <data name="ContextResultAuthenticationMessage" xml:space="preserve"><value>Save and test an OpenAI API key in Settings, then try again.</value></data>
+  <data name="ContextResultRateLimitedMessage" xml:space="preserve"><value>OpenAI is rate-limiting requests. Wait briefly and try again.</value></data>
+  <data name="ContextResultModelUnavailableMessage" xml:space="preserve"><value>The configured Responses model is unavailable for this account.</value></data>
+  <data name="ContextResultNetworkMessage" xml:space="preserve"><value>Cursivis could not reach OpenAI. Check the network connection and try again.</value></data>
+  <data name="ContextResultMalformedResponseMessage" xml:space="preserve"><value>OpenAI returned a response that did not match the required Cursivis result contract.</value></data>
+  <data name="ContextResultProviderFailureMessage" xml:space="preserve"><value>The request failed safely. No content was changed.</value></data>
+  <data name="ContextResultUnexpectedFailureTitle" xml:space="preserve"><value>Context Trigger stopped safely</value></data>
+  <data name="ContextResultUnexpectedFailureMessage" xml:space="preserve"><value>An unexpected local error occurred. No content was changed.</value></data>
+  <data name="ContextResultCopiedTitle" xml:space="preserve"><value>Copied</value></data>
+  <data name="ContextResultCopiedMessage" xml:space="preserve"><value>The result is now on the clipboard.</value></data>
+  <data name="ContextResultClipboardUnavailableTitle" xml:space="preserve"><value>Clipboard unavailable</value></data>
+  <data name="ContextResultClipboardUnavailableMessage" xml:space="preserve"><value>The result is ready, but Windows could not copy it. Use Copy to try again.</value></data>
+  <data name="ContextResultContextExpiredTitle" xml:space="preserve"><value>The captured context expired</value></data>
+  <data name="ContextResultContextExpiredMessage" xml:space="preserve"><value>Select the content again before opening Guided Mode.</value></data>
+  <data name="ContextResultReplaceFailedTitle" xml:space="preserve"><value>Selection was not replaced</value></data>
+  <data name="ContextResultReplaceFailedMessage" xml:space="preserve"><value>The target did not accept deterministic replacement. You can still copy the result.</value></data>
+  <data name="ContextResultTargetUnavailableMessage" xml:space="preserve"><value>The original application is no longer available as the active replacement target.</value></data>
 
   <data name="OverviewNavigationItem.Content" xml:space="preserve"><value>Overview</value></data>
   <data name="OverviewNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Overview</value></data>
@@ -36,6 +119,31 @@
   <data name="OpenAiSectionHeader.Description" xml:space="preserve"><value>Manage the current-user API key, quality profile, and exact model choices.</value></data>
   <data name="OpenAiSectionHeader.StatusText" xml:space="preserve"><value>Not configured</value></data>
   <data name="OpenAiSectionHeader.StatusDetail" xml:space="preserve"><value>No key has been saved or tested</value></data>
+  <data name="OpenAiSavedStatus" xml:space="preserve"><value>Key saved</value></data>
+  <data name="OpenAiSavedStatusDetail" xml:space="preserve"><value>Protected for the current Windows user; connection not tested</value></data>
+  <data name="OpenAiConnectedStatus" xml:space="preserve"><value>Connected</value></data>
+  <data name="OpenAiConnectedStatusDetail" xml:space="preserve"><value>The configured Responses model completed a strict readiness request</value></data>
+  <data name="OpenAiNotConfiguredStatus" xml:space="preserve"><value>Not configured</value></data>
+  <data name="OpenAiNotConfiguredStatusDetail" xml:space="preserve"><value>No current-user API key is saved</value></data>
+  <data name="OpenAiKeySavedTitle" xml:space="preserve"><value>API key saved</value></data>
+  <data name="OpenAiKeySavedMessage" xml:space="preserve"><value>The replacement key is protected with Windows current-user encryption. Test the connection before using Context Trigger.</value></data>
+  <data name="OpenAiKeyDeletedTitle" xml:space="preserve"><value>API key deleted</value></data>
+  <data name="OpenAiKeyDeletedMessage" xml:space="preserve"><value>The current-user key was removed from Cursivis secure storage.</value></data>
+  <data name="OpenAiTestingTitle" xml:space="preserve"><value>Testing connection</value></data>
+  <data name="OpenAiTestingMessage" xml:space="preserve"><value>Cursivis is sending one minimal strict readiness request.</value></data>
+  <data name="OpenAiConnectedTitle" xml:space="preserve"><value>Connection verified</value></data>
+  <data name="OpenAiConnectedMessage" xml:space="preserve"><value>The configured Responses model is available and returned the required structured result.</value></data>
+  <data name="OpenAiTestFailedTitle" xml:space="preserve"><value>Connection test failed</value></data>
+  <data name="OpenAiStorageFailureTitle" xml:space="preserve"><value>Secure storage failed</value></data>
+  <data name="OpenAiStorageFailureMessage" xml:space="preserve"><value>Windows current-user protection could not complete the requested key operation.</value></data>
+  <data name="OpenAiAuthenticationFailureMessage" xml:space="preserve"><value>OpenAI rejected the saved key. Replace it and test again.</value></data>
+  <data name="OpenAiPermissionFailureMessage" xml:space="preserve"><value>The account does not permit this model or operation.</value></data>
+  <data name="OpenAiModelFailureMessage" xml:space="preserve"><value>The configured Responses model is not available for this account.</value></data>
+  <data name="OpenAiQuotaFailureMessage" xml:space="preserve"><value>The account has no available quota for this request.</value></data>
+  <data name="OpenAiRateLimitFailureMessage" xml:space="preserve"><value>OpenAI is rate-limiting requests. Wait briefly and test again.</value></data>
+  <data name="OpenAiNetworkFailureMessage" xml:space="preserve"><value>Cursivis could not reach OpenAI. Check the network connection and test again.</value></data>
+  <data name="OpenAiTimeoutFailureMessage" xml:space="preserve"><value>The readiness request timed out before OpenAI returned a result.</value></data>
+  <data name="OpenAiUnknownFailureMessage" xml:space="preserve"><value>The readiness request failed safely without exposing key or prompt content.</value></data>
   <data name="InteractionSectionHeader.Title" xml:space="preserve"><value>Interaction</value></data>
   <data name="InteractionSectionHeader.Description" xml:space="preserve"><value>Choose how Cursivis appears, captures context, and presents results.</value></data>
   <data name="InteractionSectionHeader.StatusText" xml:space="preserve"><value>Defaults loaded</value></data>
@@ -48,6 +156,11 @@
   <data name="HotkeysSectionHeader.Description" xml:space="preserve"><value>Capture shortcut candidates and see configured versus active chords.</value></data>
   <data name="HotkeysSectionHeader.StatusText" xml:space="preserve"><value>Not registered</value></data>
   <data name="HotkeysSectionHeader.StatusDetail" xml:space="preserve"><value>No global shortcut has been activated</value></data>
+  <data name="HotkeyRegisteredStatus" xml:space="preserve"><value>Registered</value></data>
+  <data name="HotkeysActiveStatus" xml:space="preserve"><value>Context Trigger active</value></data>
+  <data name="HotkeysActiveStatusDetail" xml:space="preserve"><value>Context Trigger and emergency cancel are registered globally</value></data>
+  <data name="HotkeysActiveInfoTitle" xml:space="preserve"><value>Context Trigger shortcuts are active</value></data>
+  <data name="HotkeysActiveInfoMessage" xml:space="preserve"><value>Ctrl+Alt+O opens Context Trigger. Ctrl+Alt+Escape cancels the active operation.</value></data>
   <data name="VoiceSectionHeader.Title" xml:space="preserve"><value>Voice</value></data>
   <data name="VoiceSectionHeader.Description" xml:space="preserve"><value>Choose an input endpoint and tune dictation and Realtime behavior.</value></data>
   <data name="VoiceSectionHeader.StatusText" xml:space="preserve"><value>Not tested</value></data>
@@ -452,4 +565,37 @@
   <data name="AboutAcknowledgementCard.Header" xml:space="preserve"><value>OpenAI acknowledgement</value></data>
   <data name="AboutAcknowledgementCard.Description" xml:space="preserve"><value>Cursivis uses OpenAI as its only AI provider.</value></data>
   <data name="AboutAcknowledgementBody.Text" xml:space="preserve"><value>Text, vision, Realtime, transcription, structured output, and tool proposals are designed around OpenAI APIs. Local policy—not model output—authorizes and verifies actions.</value></data>
+  <data name="GuidedOperationSummarize" xml:space="preserve"><value>Summarize</value></data>
+  <data name="GuidedOperationExplain" xml:space="preserve"><value>Explain</value></data>
+  <data name="GuidedOperationTranslate" xml:space="preserve"><value>Translate</value></data>
+  <data name="GuidedOperationRewrite" xml:space="preserve"><value>Rewrite</value></data>
+  <data name="GuidedOperationMakeProfessional" xml:space="preserve"><value>Make professional</value></data>
+  <data name="GuidedOperationDraftReply" xml:space="preserve"><value>Draft reply</value></data>
+  <data name="GuidedOperationExtractKeyPoints" xml:space="preserve"><value>Extract key points</value></data>
+  <data name="GuidedOperationTurnIntoTasks" xml:space="preserve"><value>Turn into tasks</value></data>
+  <data name="GuidedOperationImprovePrompt" xml:space="preserve"><value>Improve prompt</value></data>
+  <data name="GuidedOperationAskQuestion" xml:space="preserve"><value>Ask a question</value></data>
+  <data name="GuidedOperationDebug" xml:space="preserve"><value>Debug</value></data>
+  <data name="GuidedOperationOptimize" xml:space="preserve"><value>Optimize</value></data>
+  <data name="GuidedOperationRefactor" xml:space="preserve"><value>Refactor</value></data>
+  <data name="GuidedOperationAddComments" xml:space="preserve"><value>Add comments</value></data>
+  <data name="GuidedOperationFindSecurityIssues" xml:space="preserve"><value>Find security issues</value></data>
+  <data name="GuidedOperationGenerateTests" xml:space="preserve"><value>Generate tests</value></data>
+  <data name="GuidedOperationDescribe" xml:space="preserve"><value>Describe</value></data>
+  <data name="GuidedOperationIdentifyObjects" xml:space="preserve"><value>Identify objects</value></data>
+  <data name="GuidedOperationExtractText" xml:space="preserve"><value>Extract text</value></data>
+  <data name="GuidedOperationExtractTable" xml:space="preserve"><value>Extract table</value></data>
+  <data name="GuidedOperationExplainUserInterface" xml:space="preserve"><value>Explain this UI</value></data>
+  <data name="GuidedOperationFindIssue" xml:space="preserve"><value>Find the issue</value></data>
+  <data name="GuidedOperationAnalyzeColors" xml:space="preserve"><value>Analyze colors</value></data>
+  <data name="GuidedOperationCustomTask" xml:space="preserve"><value>Custom task</value></data>
+  <data name="ContextOrbInsertingStatus" xml:space="preserve"><value>Inserting result</value></data>
+  <data name="ContextOrbInsertedStatus" xml:space="preserve"><value>Inserted</value></data>
+  <data name="ContextOrbInsertedDetail" xml:space="preserve"><value>The result was inserted into the source application.</value></data>
+  <data name="ContextResultInsertFailedTitle" xml:space="preserve"><value>Insert did not complete</value></data>
+  <data name="ContextResultInsertFailedMessage" xml:space="preserve"><value>The focused control did not accept the result. The generated result is still available.</value></data>
+  <data name="ContextOrbTextCapturedStatus" xml:space="preserve"><value>Text selection captured</value></data>
+  <data name="ContextOrbCodeCapturedStatus" xml:space="preserve"><value>Code selection captured</value></data>
+  <data name="ContextOrbImageCapturedStatus" xml:space="preserve"><value>Image captured</value></data>
+  <data name="ContextOrbSmartModeDetail" xml:space="preserve"><value>Smart Mode is generating a result. Cancel anytime.</value></data>
 </root>

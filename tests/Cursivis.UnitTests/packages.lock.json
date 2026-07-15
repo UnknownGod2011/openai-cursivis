@@ -1016,6 +1016,16 @@
           "xunit.extensibility.core": "[2.5.3]"
         }
       },
+      "cursivis.application": {
+        "type": "Project",
+        "dependencies": {
+          "Cursivis.Contracts": "[1.0.0, )",
+          "Cursivis.Domain": "[1.0.0, )"
+        }
+      },
+      "cursivis.contracts": {
+        "type": "Project"
+      },
       "cursivis.domain": {
         "type": "Project"
       }

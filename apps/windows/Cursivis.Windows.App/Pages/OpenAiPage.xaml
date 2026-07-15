@@ -29,14 +29,18 @@
 
         <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="920" HorizontalAlignment="Stretch" Spacing="20">
-                <controls:SettingsSectionHeader x:Uid="OpenAiSectionHeader" />
+                <controls:SettingsSectionHeader x:Name="OpenAiHeader" x:Uid="OpenAiSectionHeader" />
 
                 <controls:SettingsCard x:Uid="OpenAiKeyCard" IconGlyph="&#xE8D7;">
                     <controls:SettingsCard.Body>
                         <controls:SecureKeyInput
+                            x:Name="OpenAiKeyInput"
                             AutomationProperties.AutomationId="OpenAiSecureKeyInput"
                             HasSavedKey="False"
-                            IsSecureStorageAvailable="False" />
+                            IsSecureStorageAvailable="False"
+                            SaveRequested="OnSaveRequested"
+                            DeleteRequested="OnDeleteRequested"
+                            TestRequested="OnTestRequested" />
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
 
@@ -110,6 +114,7 @@
                 </controls:SettingsCard>
 
                 <InfoBar
+                    x:Name="ConnectionInfo"
                     x:Uid="OpenAiConnectionUnavailableInfo"
                     IsClosable="False"
                     IsOpen="True"

@@ -29,9 +29,10 @@
 
         <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="920" HorizontalAlignment="Stretch" Spacing="16">
-                <controls:SettingsSectionHeader x:Uid="HotkeysSectionHeader" />
+                <controls:SettingsSectionHeader x:Name="HotkeysHeader" x:Uid="HotkeysSectionHeader" />
 
                 <InfoBar
+                    x:Name="RegistrationInfo"
                     x:Uid="HotkeysRegistrationInfo"
                     IsClosable="False"
                     IsOpen="True"

@@ -11,4 +11,11 @@
     <ProjectReference Include="..\Cursivis.Domain\Cursivis.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource
+      Include="..\..\schemas\smart-result.schema.json"
+      Link="Schemas\smart-result.schema.json"
+      LogicalName="Cursivis.Schemas.SmartResult" />
+  </ItemGroup>
+
 </Project>

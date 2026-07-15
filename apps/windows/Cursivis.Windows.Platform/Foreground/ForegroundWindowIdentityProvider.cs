@@ -7,7 +7,8 @@ namespace Cursivis.Windows.Platform.Foreground;
 public sealed record ForegroundWindowIdentity(
     uint ProcessId,
     string ProcessName,
-    string WindowTitle);
+    string WindowTitle,
+    nint WindowHandle = default);
 
 public interface IForegroundWindowIdentityProvider
 {
@@ -53,7 +54,7 @@ public sealed class Win32ForegroundWindowIdentityProvider : IForegroundWindowIde
         }
 
         var title = ReadWindowTitle(window);
-        return new ForegroundWindowIdentity(processId, processName, title);
+        return new ForegroundWindowIdentity(processId, processName, title, window);
     }
 
     private static string ReadWindowTitle(nint window)

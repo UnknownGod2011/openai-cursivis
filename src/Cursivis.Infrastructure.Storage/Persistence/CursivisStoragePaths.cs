@@ -23,6 +23,10 @@ public sealed class CursivisStoragePaths
 
     public string LogsDirectory => Path.Combine(RootDirectory, "logs");
 
+    public string OverlayPlacementFile => Path.Combine(RootDirectory, "overlay-placement.json");
+
+    public string ResultPanelSizeFile => Path.Combine(RootDirectory, "result-panel-size.json");
+
     public static CursivisStoragePaths ForCurrentUser()
     {
         var localApplicationData = Environment.GetFolderPath(

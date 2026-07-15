@@ -21,6 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Cursivis.Application\Cursivis.Application.csproj" />
+    <ProjectReference Include="..\..\src\Cursivis.Contracts\Cursivis.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Cursivis.Domain\Cursivis.Domain.csproj" />
   </ItemGroup>
 
