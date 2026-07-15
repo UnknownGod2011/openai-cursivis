@@ -9,7 +9,7 @@
 - [x] Write PRD, architecture, Settings design, and action safety policy.
 - [x] Verify local `.env` key presence without printing it.
 - [x] Prove a clean WinUI build and real top-level launch.
-- [ ] Initialize canonical Git remote, commit, push, and verify SHA.
+- [x] Initialize canonical Git remote, commit, push, and verify SHA.
 
 ### Phase 1 - Foundation
 
