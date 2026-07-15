@@ -35,6 +35,9 @@ try {
         exit 1
     }
 
+    # A successful no-match from git grep is exit code 1. PowerShell otherwise
+    # propagates that stale native exit code after this script completes.
+    $global:LASTEXITCODE = 0
     Write-Host 'Secret scan passed; .env is ignored and no tracked credential pattern was found.'
 }
 finally {
