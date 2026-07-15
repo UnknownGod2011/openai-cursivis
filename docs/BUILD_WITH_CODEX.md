@@ -30,6 +30,39 @@ Milestone:
 - Remote: `https://github.com/UnknownGod2011/openai-cursivis`
 - Draft PR: `https://github.com/UnknownGod2011/openai-cursivis/pull/1`
 
+## Phase 1 - Desktop foundation checkpoint
+
+Completed with Codex on 2026-07-16.
+
+Work:
+
+- Created the bounded .NET solution, domain, application, OpenAI, storage, browser-bridge, Windows platform, native-host, WinUI application, and test projects.
+- Added typed interaction, context, settings, model, Quick Task, browser, and action contracts plus strict JSON schemas.
+- Added atomic versioned settings persistence, migration and corrupt-file recovery, current-user DPAPI secret storage, and a separate development-only `.env` adapter.
+- Added transactional global-hotkey, same-user single-instance/activation, foreground-window, authenticated pipe, native-messaging, and browser-session primitives.
+- Added the OpenAI Responses gateway with strict structured output, disabled response storage, centralized model identifiers, and classified provider failures.
+- Built the new multi-section WinUI Settings shell with reusable controls and ten destinations: Overview, OpenAI, Interaction, Custom Quick Task, Hotkeys, Voice, Browser Integration, Privacy & Safety, Diagnostics, and About.
+- Fixed an Interaction page construction failure caused by XAML change events firing during `InitializeComponent` before the save-state control was available.
+
+Validation:
+
+- Release solution build passed with zero warnings and zero errors.
+- Unit tests: 83 passed, 0 failed, 0 skipped.
+- Integration tests: 24 passed, 0 failed, 0 skipped.
+- Chromium extension manifest and JavaScript syntax validation passed.
+- Staged secret scan passed; `.env` remained ignored and untracked.
+- The actual self-contained Release `Cursivis.exe` launched successfully.
+- Every Settings navigation destination was opened in the real application and rendered after the Interaction initialization fix.
+- Development-only or not-yet-connected controls remain explicitly unavailable instead of reporting false health; they are not recorded as completed features.
+
+Milestone:
+
+- Commit: `e5ad1ed3df04a65c927f32083c50c64723f082af`
+- Branch: `codex/build-cursivis-next`
+- Remote SHA verified: `e5ad1ed3df04a65c927f32083c50c64723f082af`
+- Authoritative product-goal file: `CURSIVIS_GOAL.txt`
+- Product-goal SHA-256: `9CFF3303E313835E332EB6171BA042F182D82886C28001B728165057F9E0D603`
+
 ## Codex task reference
 
 The work was performed in the current Codex desktop task. No durable Codex session ID was surfaced to the repository-writing workflow, so none is recorded here. The user should add the real task/session reference from the Codex UI when preparing final hackathon evidence.
