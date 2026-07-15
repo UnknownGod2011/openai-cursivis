@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="WindowTitle" xml:space="preserve"><value>Cursivis Settings</value></data>
+
+  <data name="OverviewNavigationItem.Content" xml:space="preserve"><value>Overview</value></data>
+  <data name="OverviewNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Overview</value></data>
+  <data name="OpenAiNavigationItem.Content" xml:space="preserve"><value>OpenAI</value></data>
+  <data name="OpenAiNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>OpenAI</value></data>
+  <data name="InteractionNavigationItem.Content" xml:space="preserve"><value>Interaction</value></data>
+  <data name="InteractionNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Interaction</value></data>
+  <data name="QuickTaskNavigationItem.Content" xml:space="preserve"><value>Custom Quick Task</value></data>
+  <data name="QuickTaskNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Custom Quick Task</value></data>
+  <data name="HotkeysNavigationItem.Content" xml:space="preserve"><value>Hotkeys</value></data>
+  <data name="HotkeysNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Hotkeys</value></data>
+  <data name="VoiceNavigationItem.Content" xml:space="preserve"><value>Voice</value></data>
+  <data name="VoiceNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Voice</value></data>
+  <data name="BrowserNavigationItem.Content" xml:space="preserve"><value>Browser Integration</value></data>
+  <data name="BrowserNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Browser Integration</value></data>
+  <data name="PrivacyNavigationItem.Content" xml:space="preserve"><value>Privacy &amp; Safety</value></data>
+  <data name="PrivacyNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Privacy and Safety</value></data>
+  <data name="DiagnosticsNavigationItem.Content" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="DiagnosticsNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="AboutNavigationItem.Content" xml:space="preserve"><value>About</value></data>
+  <data name="AboutNavigationItem.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>About</value></data>
+
+  <data name="OverviewSectionHeader.Title" xml:space="preserve"><value>Overview</value></data>
+  <data name="OverviewSectionHeader.Description" xml:space="preserve"><value>Finish essential setup, then return here for a truthful readiness check.</value></data>
+  <data name="OverviewSectionHeader.StatusText" xml:space="preserve"><value>Setup incomplete</value></data>
+  <data name="OverviewSectionHeader.StatusDetail" xml:space="preserve"><value>OpenAI, hotkeys, and browser integration still need setup</value></data>
+  <data name="OpenAiSectionHeader.Title" xml:space="preserve"><value>OpenAI</value></data>
+  <data name="OpenAiSectionHeader.Description" xml:space="preserve"><value>Manage the current-user API key, quality profile, and exact model choices.</value></data>
+  <data name="OpenAiSectionHeader.StatusText" xml:space="preserve"><value>Not configured</value></data>
+  <data name="OpenAiSectionHeader.StatusDetail" xml:space="preserve"><value>No key has been saved or tested</value></data>
+  <data name="InteractionSectionHeader.Title" xml:space="preserve"><value>Interaction</value></data>
+  <data name="InteractionSectionHeader.Description" xml:space="preserve"><value>Choose how Cursivis appears, captures context, and presents results.</value></data>
+  <data name="InteractionSectionHeader.StatusText" xml:space="preserve"><value>Defaults loaded</value></data>
+  <data name="InteractionSectionHeader.StatusDetail" xml:space="preserve"><value>Durable settings storage is not connected yet</value></data>
+  <data name="QuickTaskSectionHeader.Title" xml:space="preserve"><value>Custom Quick Task</value></data>
+  <data name="QuickTaskSectionHeader.Description" xml:space="preserve"><value>Review the Prompt Optimizer default or prepare one approved personal task.</value></data>
+  <data name="QuickTaskSectionHeader.StatusText" xml:space="preserve"><value>Prompt Optimizer</value></data>
+  <data name="QuickTaskSectionHeader.StatusDetail" xml:space="preserve"><value>Valid default loaded; not persisted</value></data>
+  <data name="HotkeysSectionHeader.Title" xml:space="preserve"><value>Hotkeys</value></data>
+  <data name="HotkeysSectionHeader.Description" xml:space="preserve"><value>Capture shortcut candidates and see configured versus active chords.</value></data>
+  <data name="HotkeysSectionHeader.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="HotkeysSectionHeader.StatusDetail" xml:space="preserve"><value>No global shortcut has been activated</value></data>
+  <data name="VoiceSectionHeader.Title" xml:space="preserve"><value>Voice</value></data>
+  <data name="VoiceSectionHeader.Description" xml:space="preserve"><value>Choose an input endpoint and tune dictation and Realtime behavior.</value></data>
+  <data name="VoiceSectionHeader.StatusText" xml:space="preserve"><value>Not tested</value></data>
+  <data name="VoiceSectionHeader.StatusDetail" xml:space="preserve"><value>No microphone capture lease is active</value></data>
+  <data name="BrowserSectionHeader.Title" xml:space="preserve"><value>Browser Integration</value></data>
+  <data name="BrowserSectionHeader.Description" xml:space="preserve"><value>Connect the Chromium extension through the authenticated native bridge.</value></data>
+  <data name="BrowserSectionHeader.StatusText" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="BrowserSectionHeader.StatusDetail" xml:space="preserve"><value>No authenticated handshake has completed</value></data>
+  <data name="PrivacySectionHeader.Title" xml:space="preserve"><value>Privacy &amp; Safety</value></data>
+  <data name="PrivacySectionHeader.Description" xml:space="preserve"><value>Control capture scope, memory, diagnostics, and confirmation boundaries.</value></data>
+  <data name="PrivacySectionHeader.StatusText" xml:space="preserve"><value>Safe defaults</value></data>
+  <data name="PrivacySectionHeader.StatusDetail" xml:space="preserve"><value>Memory is off and high-risk actions always require confirmation</value></data>
+  <data name="DiagnosticsSectionHeader.Title" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="DiagnosticsSectionHeader.Description" xml:space="preserve"><value>Inspect sanitized local health without exposing keys, prompts, images, audio, or form values.</value></data>
+  <data name="DiagnosticsSectionHeader.StatusText" xml:space="preserve"><value>Local snapshot</value></data>
+  <data name="DiagnosticsSectionHeader.StatusDetail" xml:space="preserve"><value>Only implemented components are reported</value></data>
+  <data name="AboutSectionHeader.Title" xml:space="preserve"><value>About</value></data>
+  <data name="AboutSectionHeader.Description" xml:space="preserve"><value>Product identity, source, license, and OpenAI acknowledgement.</value></data>
+  <data name="AboutSectionHeader.StatusText" xml:space="preserve"><value>Development build</value></data>
+  <data name="AboutSectionHeader.StatusDetail" xml:space="preserve"><value>No release or update channel is configured</value></data>
+
+  <data name="OverviewWelcomeCard.Header" xml:space="preserve"><value>Welcome to Cursivis</value></data>
+  <data name="OverviewWelcomeCard.Description" xml:space="preserve"><value>Complete the required setup in a few focused steps. Voice and privacy can be reviewed at any time.</value></data>
+  <data name="OverviewWelcomeBody.Text" xml:space="preserve"><value>Cursivis adds OpenAI to your current cursor and active workflow. Nothing is marked ready until the corresponding service is configured and verified.</value></data>
+  <data name="OverviewStepOpenAi.Text" xml:space="preserve"><value>1. Save and test an OpenAI API key.</value></data>
+  <data name="OverviewStepHotkeys.Text" xml:space="preserve"><value>2. Verify that each global shortcut registers without conflict.</value></data>
+  <data name="OverviewStepBrowser.Text" xml:space="preserve"><value>3. Install the extension and complete an authenticated bridge handshake.</value></data>
+  <data name="OverviewConfigureOpenAiButton.Content" xml:space="preserve"><value>Configure</value></data>
+  <data name="OverviewConfigureOpenAiButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Configure OpenAI</value></data>
+  <data name="OverviewReviewHotkeysButton.Content" xml:space="preserve"><value>Review</value></data>
+  <data name="OverviewReviewHotkeysButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Review hotkeys</value></data>
+  <data name="OverviewSetUpBrowserButton.Content" xml:space="preserve"><value>Set up</value></data>
+  <data name="OverviewSetUpBrowserButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Set up browser integration</value></data>
+  <data name="OverviewOptionalSteps.Text" xml:space="preserve"><value>Optional onboarding steps—microphone, default mode, and privacy review—can be skipped and completed later.</value></data>
+  <data name="OverviewReadinessCard.Header" xml:space="preserve"><value>Readiness</value></data>
+  <data name="OverviewReadinessCard.Description" xml:space="preserve"><value>Compact status based only on observed local state.</value></data>
+  <data name="OverviewOpenAiStatus.StatusText" xml:space="preserve"><value>OpenAI · Not configured</value></data>
+  <data name="OverviewOpenAiStatus.DetailText" xml:space="preserve"><value>No secure key reference exists</value></data>
+  <data name="OverviewBrowserStatus.StatusText" xml:space="preserve"><value>Browser bridge · Disconnected</value></data>
+  <data name="OverviewBrowserStatus.DetailText" xml:space="preserve"><value>No current authenticated handshake</value></data>
+  <data name="OverviewHotkeyStatus.StatusText" xml:space="preserve"><value>Hotkeys · Not registered</value></data>
+  <data name="OverviewHotkeyStatus.DetailText" xml:space="preserve"><value>Configured defaults have not been activated</value></data>
+  <data name="OverviewVoiceStatus.StatusText" xml:space="preserve"><value>Voice · Not tested</value></data>
+  <data name="OverviewVoiceStatus.DetailText" xml:space="preserve"><value>No endpoint or permission check yet</value></data>
+  <data name="OverviewDefaultsCard.Header" xml:space="preserve"><value>Current safe defaults</value></data>
+  <data name="OverviewDefaultsCard.Description" xml:space="preserve"><value>These are initial UI values, not claims of active platform configuration.</value></data>
+  <data name="OverviewQualityDefault.Text" xml:space="preserve"><value>Quality profile: Balanced · gpt-5.6-terra</value></data>
+  <data name="OverviewQuickTaskDefault.Text" xml:space="preserve"><value>Quick Task: Prompt Optimizer · text only · output only the optimized prompt</value></data>
+  <data name="OverviewCaptureDefault.Text" xml:space="preserve"><value>Capture: active window · visible, user-triggered screen access only</value></data>
+  <data name="OverviewStartupDefault.Text" xml:space="preserve"><value>Launch at sign-in: Off</value></data>
+
+  <data name="OpenAiKeyCard.Header" xml:space="preserve"><value>API key</value></data>
+  <data name="OpenAiKeyCard.Description" xml:space="preserve"><value>A production key belongs in current-user secure storage. A saved key is not considered tested until a real connection check succeeds.</value></data>
+  <data name="SecureKeyInputLabel.Text" xml:space="preserve"><value>Replacement API key</value></data>
+  <data name="SecureKeyPasswordBox.PlaceholderText" xml:space="preserve"><value>Enter a new key</value></data>
+  <data name="SecureKeyInputHelp.Text" xml:space="preserve"><value>The existing key is never loaded back into this field. The temporary entry is cleared after a successful secure save.</value></data>
+  <data name="SecureKeyStorageUnavailable.Title" xml:space="preserve"><value>Secure storage unavailable</value></data>
+  <data name="SecureKeyStorageUnavailable.Message" xml:space="preserve"><value>Your entry is not saved. Save, delete, and test remain disabled until the current-user secret store is connected.</value></data>
+  <data name="SaveKeyButton.Content" xml:space="preserve"><value>Save key</value></data>
+  <data name="SaveKeyButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Save OpenAI API key securely</value></data>
+  <data name="DeleteKeyButton.Content" xml:space="preserve"><value>Delete saved key</value></data>
+  <data name="DeleteKeyButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Delete saved OpenAI API key</value></data>
+  <data name="TestKeyButton.Content" xml:space="preserve"><value>Test connection</value></data>
+  <data name="TestKeyButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Test OpenAI connection</value></data>
+  <data name="OpenAiQualityCard.Header" xml:space="preserve"><value>Quality profile</value></data>
+  <data name="OpenAiQualityCard.Description" xml:space="preserve"><value>Balanced is the recommended default. Cursivis never silently switches to a materially more expensive profile.</value></data>
+  <data name="QualityProfileLabel.Text" xml:space="preserve"><value>Default quality</value></data>
+  <data name="QualityProfileComboBox.PlaceholderText" xml:space="preserve"><value>Choose a profile</value></data>
+  <data name="EconomyProfileOption.Content" xml:space="preserve"><value>Economy · gpt-5.6-luna</value></data>
+  <data name="BalancedProfileOption.Content" xml:space="preserve"><value>Balanced · gpt-5.6-terra</value></data>
+  <data name="BestQualityProfileOption.Content" xml:space="preserve"><value>Best Quality · gpt-5.6-sol</value></data>
+  <data name="QualityProfileHelp.Text" xml:space="preserve"><value>Availability is account-specific and must be tested before a model is reported ready.</value></data>
+  <data name="OpenAiModelsCard.Header" xml:space="preserve"><value>Advanced models</value></data>
+  <data name="OpenAiModelsCard.Description" xml:space="preserve"><value>Exact API identifiers are visible here for advanced users and diagnostics.</value></data>
+  <data name="AdvancedModelsExpander.Header" xml:space="preserve"><value>Show exact model choices</value></data>
+  <data name="ResponsesModelLabel.Text" xml:space="preserve"><value>Responses model</value></data>
+  <data name="RealtimeModelLabel.Text" xml:space="preserve"><value>Realtime model</value></data>
+  <data name="TranscriptionModelLabel.Text" xml:space="preserve"><value>Transcription model</value></data>
+  <data name="LunaModelOption.Content" xml:space="preserve"><value>gpt-5.6-luna</value></data>
+  <data name="TerraModelOption.Content" xml:space="preserve"><value>gpt-5.6-terra</value></data>
+  <data name="SolModelOption.Content" xml:space="preserve"><value>gpt-5.6-sol</value></data>
+  <data name="RealtimeModelOption.Content" xml:space="preserve"><value>gpt-realtime-2.1</value></data>
+  <data name="RealtimeMiniModelOption.Content" xml:space="preserve"><value>gpt-realtime-2.1-mini</value></data>
+  <data name="RealtimeWhisperModelOption.Content" xml:space="preserve"><value>gpt-realtime-whisper</value></data>
+  <data name="MiniTranscribeModelOption.Content" xml:space="preserve"><value>gpt-4o-mini-transcribe</value></data>
+  <data name="TranscribeModelOption.Content" xml:space="preserve"><value>gpt-4o-transcribe</value></data>
+  <data name="OpenAiPricingLink.Content" xml:space="preserve"><value>View current official OpenAI pricing</value></data>
+  <data name="OpenAiPricingLink.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>View current official OpenAI pricing</value></data>
+  <data name="OpenAiConnectionUnavailableInfo.Title" xml:space="preserve"><value>Connection not tested</value></data>
+  <data name="OpenAiConnectionUnavailableInfo.Message" xml:space="preserve"><value>Authentication, quota, rate-limit, network, and model-access results will appear only after secure key storage and the OpenAI gateway are connected.</value></data>
+
+  <data name="InteractionModeCard.Header" xml:space="preserve"><value>Default mode</value></data>
+  <data name="InteractionModeCard.Description" xml:space="preserve"><value>Smart chooses an operation from context. Guided keeps the choice with you.</value></data>
+  <data name="SmartModeOption.Content" xml:space="preserve"><value>Smart Mode · decide from the current context</value></data>
+  <data name="SmartModeOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Use Smart Mode by default</value></data>
+  <data name="GuidedModeOption.Content" xml:space="preserve"><value>Guided Mode · show relevant choices first</value></data>
+  <data name="GuidedModeOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Use Guided Mode by default</value></data>
+  <data name="InteractionOrbCard.Header" xml:space="preserve"><value>Orb and results</value></data>
+  <data name="InteractionOrbCard.Description" xml:space="preserve"><value>Control when the orb is visible and how long results stay available.</value></data>
+  <data name="AlwaysShowOrbToggle.Header" xml:space="preserve"><value>Always show the orb</value></data>
+  <data name="AlwaysShowOrbToggle.OffContent" xml:space="preserve"><value>Only during an operation</value></data>
+  <data name="AlwaysShowOrbToggle.OnContent" xml:space="preserve"><value>Visible while idle</value></data>
+  <data name="AlwaysShowOrbToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Always show the orb</value></data>
+  <data name="KeepResultsOpenToggle.Header" xml:space="preserve"><value>Keep results open until dismissed</value></data>
+  <data name="KeepResultsOpenToggle.OffContent" xml:space="preserve"><value>Auto-close</value></data>
+  <data name="KeepResultsOpenToggle.OnContent" xml:space="preserve"><value>Manual close</value></data>
+  <data name="KeepResultsOpenToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Keep results open until dismissed</value></data>
+  <data name="ResetOrbPositionButton.Content" xml:space="preserve"><value>Reset orb position</value></data>
+  <data name="ResetOrbPositionButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Reset orb position</value></data>
+  <data name="InteractionCaptureCard.Header" xml:space="preserve"><value>Screen context</value></data>
+  <data name="InteractionCaptureCard.Description" xml:space="preserve"><value>Navigation Guidance is separate from one-shot analysis and always remains visible and stoppable.</value></data>
+  <data name="ActiveWindowCaptureOption.Content" xml:space="preserve"><value>Capture only the active window</value></data>
+  <data name="ActiveWindowCaptureOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Capture only the active window</value></data>
+  <data name="DisplayCaptureOption.Content" xml:space="preserve"><value>Capture the active display when explicitly approved</value></data>
+  <data name="DisplayCaptureOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Capture the active display when explicitly approved</value></data>
+  <data name="InteractionContextRetentionHelp.Text" xml:space="preserve"><value>Selection and image context is bounded, expires, and is not included in logs by default.</value></data>
+  <data name="InteractionStartupCard.Header" xml:space="preserve"><value>Startup</value></data>
+  <data name="InteractionStartupCard.Description" xml:space="preserve"><value>Startup registration is changed only through the platform service.</value></data>
+  <data name="LaunchAtSignInToggle.Header" xml:space="preserve"><value>Launch Cursivis at sign-in</value></data>
+  <data name="LaunchAtSignInToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="LaunchAtSignInToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="LaunchAtSignInToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Launch Cursivis at sign-in</value></data>
+  <data name="InteractionSaveState.StateText" xml:space="preserve"><value>No unsaved changes</value></data>
+  <data name="SaveChangesButton.Content" xml:space="preserve"><value>Save</value></data>
+  <data name="SaveChangesButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Save section changes</value></data>
+  <data name="DiscardChangesButton.Content" xml:space="preserve"><value>Discard</value></data>
+  <data name="DiscardChangesButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Discard section changes</value></data>
+  <data name="SaveStateStorageUnavailable" xml:space="preserve"><value>Unsaved changes · durable settings storage is unavailable</value></data>
+  <data name="OrbPositionResetStaged" xml:space="preserve"><value>Orb position reset is staged · no platform state changed</value></data>
+  <data name="SaveStateNoChanges" xml:space="preserve"><value>No unsaved changes</value></data>
+
+  <data name="QuickTaskDefaultBehaviorInfo.Title" xml:space="preserve"><value>Default one-command behavior</value></data>
+  <data name="QuickTaskDefaultBehaviorInfo.Message" xml:space="preserve"><value>Ctrl+Alt+Y runs Prompt Optimizer on selected text and returns only the optimized prompt. It preserves requirements, named entities, links, deadlines, requested output, and genuine contradictions.</value></data>
+  <data name="QuickTaskDescribeCard.Header" xml:space="preserve"><value>1. Describe the task</value></data>
+  <data name="QuickTaskDescribeCard.Description" xml:space="preserve"><value>Give the task a short name and describe the transformation you want.</value></data>
+  <data name="QuickTaskNameLabel.Text" xml:space="preserve"><value>Task name</value></data>
+  <data name="QuickTaskNameInput.PlaceholderText" xml:space="preserve"><value>Prompt Optimizer</value></data>
+  <data name="QuickTaskDescriptionLabel.Text" xml:space="preserve"><value>Rough task description</value></data>
+  <data name="QuickTaskDescriptionInput.PlaceholderText" xml:space="preserve"><value>Describe what the one-key task should do</value></data>
+  <data name="GenerateInstructionButton.Content" xml:space="preserve"><value>Generate final instruction</value></data>
+  <data name="GenerateInstructionButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Generate final Quick Task instruction</value></data>
+  <data name="GenerateInstructionUnavailableHelp.Text" xml:space="preserve"><value>Generation requires a saved, tested OpenAI key. No request is simulated while OpenAI is not configured.</value></data>
+  <data name="QuickTaskReviewCard.Header" xml:space="preserve"><value>2. Review the final instruction</value></data>
+  <data name="QuickTaskReviewCard.Description" xml:space="preserve"><value>This is the production instruction. Review it carefully and edit it before approval.</value></data>
+  <data name="FinalInstructionLabel.Text" xml:space="preserve"><value>Finalized instruction</value></data>
+  <data name="FinalInstructionInput.PlaceholderText" xml:space="preserve"><value>A precise, bounded instruction is required</value></data>
+  <data name="FinalInstructionHelp.Text" xml:space="preserve"><value>Instructions that try to bypass confirmation, secret handling, or centralized policy are rejected by the application layer.</value></data>
+  <data name="QuickTaskBehaviorCard.Header" xml:space="preserve"><value>3. Confirm context and output</value></data>
+  <data name="QuickTaskBehaviorCard.Description" xml:space="preserve"><value>Unsupported context is explained instead of silently reinterpreted.</value></data>
+  <data name="QuickTaskSupportsTextToggle.Header" xml:space="preserve"><value>Accept selected or typed text</value></data>
+  <data name="QuickTaskSupportsTextToggle.OffContent" xml:space="preserve"><value>Text unsupported</value></data>
+  <data name="QuickTaskSupportsTextToggle.OnContent" xml:space="preserve"><value>Text supported</value></data>
+  <data name="QuickTaskSupportsTextToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Quick Task supports text</value></data>
+  <data name="QuickTaskSupportsImageToggle.Header" xml:space="preserve"><value>Accept an explicitly selected image region</value></data>
+  <data name="QuickTaskSupportsImageToggle.OffContent" xml:space="preserve"><value>Images unsupported</value></data>
+  <data name="QuickTaskSupportsImageToggle.OnContent" xml:space="preserve"><value>Images supported</value></data>
+  <data name="QuickTaskSupportsImageToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Quick Task supports images</value></data>
+  <data name="QuickTaskOutputLabel.Text" xml:space="preserve"><value>Expected output</value></data>
+  <data name="QuickTaskReplacementOutput.Content" xml:space="preserve"><value>Replacement text</value></data>
+  <data name="QuickTaskAnalysisOutput.Content" xml:space="preserve"><value>Analysis</value></data>
+  <data name="QuickTaskStructuredOutput.Content" xml:space="preserve"><value>Structured data</value></data>
+  <data name="QuickTaskSuggestedActionOutput.Content" xml:space="preserve"><value>Suggested action</value></data>
+  <data name="QuickTaskMayProposeActionToggle.Header" xml:space="preserve"><value>May propose a Take Action plan</value></data>
+  <data name="QuickTaskMayProposeActionToggle.OffContent" xml:space="preserve"><value>Content only</value></data>
+  <data name="QuickTaskMayProposeActionToggle.OnContent" xml:space="preserve"><value>Proposal allowed</value></data>
+  <data name="QuickTaskMayProposeActionToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Quick Task may propose a Take Action plan</value></data>
+  <data name="QuickTaskSafetyHelp.Text" xml:space="preserve"><value>A proposal never authorizes execution. Normal risk classification, preview, confirmation, deterministic execution, and verification still apply.</value></data>
+  <data name="QuickTaskTestCard.Header" xml:space="preserve"><value>4. Test with a safe fixture</value></data>
+  <data name="QuickTaskTestCard.Description" xml:space="preserve"><value>Tests use only the text entered here and never the current screen.</value></data>
+  <data name="QuickTaskFixtureLabel.Text" xml:space="preserve"><value>Safe sample content</value></data>
+  <data name="QuickTaskFixtureInput.PlaceholderText" xml:space="preserve"><value>Paste non-sensitive sample text</value></data>
+  <data name="TestQuickTaskButton.Content" xml:space="preserve"><value>Test task</value></data>
+  <data name="TestQuickTaskButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Test Quick Task with safe sample</value></data>
+  <data name="TestQuickTaskUnavailableHelp.Text" xml:space="preserve"><value>Testing is disabled until OpenAI is configured. No fake result is generated.</value></data>
+  <data name="QuickTaskApprovalCheckBox.Content" xml:space="preserve"><value>I reviewed and approve this finalized instruction.</value></data>
+  <data name="QuickTaskApprovalCheckBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Approve finalized Quick Task instruction</value></data>
+  <data name="RestorePromptOptimizerButton.Content" xml:space="preserve"><value>Restore Prompt Optimizer</value></data>
+  <data name="RestorePromptOptimizerButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Restore Prompt Optimizer default</value></data>
+  <data name="QuickTaskSaveState.StateText" xml:space="preserve"><value>No unsaved changes</value></data>
+  <data name="PromptOptimizerDefaultName" xml:space="preserve"><value>Prompt Optimizer</value></data>
+  <data name="PromptOptimizerDefaultDescription" xml:space="preserve"><value>Turn rough selected instructions into a precise, structured, implementation-ready prompt while preserving every original requirement.</value></data>
+  <data name="PromptOptimizerDefaultInstruction" xml:space="preserve"><value>Rewrite the selected rough prompt into a precise, structured, implementation-ready prompt while preserving every original requirement, constraint, named entity, link, deadline, contradiction, and requested output. Remove unnecessary repetition and ambiguity where safely possible, but do not invent missing details or silently discard requirements. Return only the optimized prompt unless the user explicitly asks for an explanation.</value></data>
+  <data name="QuickTaskValidationNameRequired" xml:space="preserve"><value>Enter a task name.</value></data>
+  <data name="QuickTaskValidationNameLength" xml:space="preserve"><value>Keep the task name to 64 characters or fewer.</value></data>
+  <data name="QuickTaskValidationInstructionRequired" xml:space="preserve"><value>The finalized instruction must contain at least 40 meaningful characters.</value></data>
+  <data name="QuickTaskValidationInstructionLength" xml:space="preserve"><value>The finalized instruction exceeds the 8,000-character safety limit.</value></data>
+  <data name="QuickTaskValidationContextRequired" xml:space="preserve"><value>Select at least one supported context type.</value></data>
+  <data name="QuickTaskValidationReady" xml:space="preserve"><value>The definition passes local structural validation.</value></data>
+  <data name="QuickTaskApprovalRequired" xml:space="preserve"><value>Review and approve the final instruction before saving.</value></data>
+  <data name="QuickTaskSaveStorageUnavailable" xml:space="preserve"><value>Approved and valid · durable Quick Task storage is unavailable</value></data>
+
+  <data name="HotkeysRegistrationInfo.Title" xml:space="preserve"><value>No shortcuts are active</value></data>
+  <data name="HotkeysRegistrationInfo.Message" xml:space="preserve"><value>The recorder validates local candidates only. Global registration and transactional replacement are not connected, so active shortcuts remain None.</value></data>
+  <data name="HotkeyCaptureButton.Content" xml:space="preserve"><value>Record shortcut</value></data>
+  <data name="HotkeyConfiguredLabel.Text" xml:space="preserve"><value>Configured</value></data>
+  <data name="HotkeyActiveLabel.Text" xml:space="preserve"><value>Active</value></data>
+  <data name="ContextTriggerRecorder.FunctionName" xml:space="preserve"><value>Context Trigger</value></data>
+  <data name="ContextTriggerRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+O</value></data>
+  <data name="ContextTriggerRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="ContextTriggerRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="LiveModeRecorder.FunctionName" xml:space="preserve"><value>Realtime Live Mode</value></data>
+  <data name="LiveModeRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+P</value></data>
+  <data name="LiveModeRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="LiveModeRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="TakeActionRecorder.FunctionName" xml:space="preserve"><value>Direct Take Action</value></data>
+  <data name="TakeActionRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+I</value></data>
+  <data name="TakeActionRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="TakeActionRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="DictationRecorder.FunctionName" xml:space="preserve"><value>Smart Dictation</value></data>
+  <data name="DictationRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+U</value></data>
+  <data name="DictationRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="DictationRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="QuickTaskRecorder.FunctionName" xml:space="preserve"><value>Custom Quick Task</value></data>
+  <data name="QuickTaskRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+Y</value></data>
+  <data name="QuickTaskRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="QuickTaskRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="CancelRecorder.FunctionName" xml:space="preserve"><value>Cancel / Emergency Stop</value></data>
+  <data name="CancelRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+Escape</value></data>
+  <data name="CancelRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="CancelRecorder.StatusText" xml:space="preserve"><value>Not registered</value></data>
+  <data name="SettingsRecorder.FunctionName" xml:space="preserve"><value>Open Settings</value></data>
+  <data name="SettingsRecorder.ConfiguredChord" xml:space="preserve"><value>Ctrl+Alt+S</value></data>
+  <data name="SettingsRecorder.ActiveChord" xml:space="preserve"><value>None</value></data>
+  <data name="SettingsRecorder.StatusText" xml:space="preserve"><value>Proposed default · not registered</value></data>
+  <data name="RestoreHotkeyDefaultsButton.Content" xml:space="preserve"><value>Restore staged defaults</value></data>
+  <data name="RestoreHotkeyDefaultsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Restore default hotkey candidates</value></data>
+  <data name="HotkeyPageInitialStatus.Text" xml:space="preserve"><value>No registration was attempted.</value></data>
+  <data name="HotkeyNotRegisteredStatus" xml:space="preserve"><value>Not registered</value></data>
+  <data name="HotkeyPressShortcut" xml:space="preserve"><value>Press shortcut…</value></data>
+  <data name="HotkeyEscapeToCancel" xml:space="preserve"><value>Hold at least two modifiers and press a key. Press Escape to cancel.</value></data>
+  <data name="HotkeyNeedTwoModifiers" xml:space="preserve"><value>Use at least two modifiers plus a non-modifier key.</value></data>
+  <data name="HotkeyReservedConflict" xml:space="preserve"><value>That chord is reserved by the current keyboard.wtf installation. Choose another shortcut.</value></data>
+  <data name="HotkeyCandidateNotRegistered" xml:space="preserve"><value>Candidate captured · not registered</value></data>
+  <data name="HotkeyRecordShortcut" xml:space="preserve"><value>Record shortcut</value></data>
+  <data name="HotkeyDuplicateValidation" xml:space="preserve"><value>This candidate duplicates another configured shortcut.</value></data>
+  <data name="HotkeyDuplicatePageStatus" xml:space="preserve"><value>Resolve the duplicate before registration can be attempted.</value></data>
+  <data name="HotkeyCandidatePageStatus" xml:space="preserve"><value>Candidate captured locally. No global shortcut changed.</value></data>
+  <data name="HotkeyDefaultsStagedStatus" xml:space="preserve"><value>Default candidates restored. No global shortcut changed.</value></data>
+
+  <data name="VoiceMicrophoneCard.Header" xml:space="preserve"><value>Microphone</value></data>
+  <data name="VoiceMicrophoneCard.Description" xml:space="preserve"><value>A real endpoint and exclusive Settings test lease are required before the meter or audio test can run.</value></data>
+  <data name="MicrophoneLabel.Text" xml:space="preserve"><value>Input device</value></data>
+  <data name="MicrophoneComboBox.PlaceholderText" xml:space="preserve"><value>Select a microphone</value></data>
+  <data name="NoMicrophoneOption.Content" xml:space="preserve"><value>No endpoint enumerated</value></data>
+  <data name="MicrophonePermissionStatus.StatusText" xml:space="preserve"><value>Permission not checked</value></data>
+  <data name="MicrophonePermissionStatus.DetailText" xml:space="preserve"><value>No device enumeration or capture attempt has run</value></data>
+  <data name="MicrophoneLevelLabel.Text" xml:space="preserve"><value>Input level</value></data>
+  <data name="MicrophoneLevelMeter.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Displays actual captured microphone input when an audio test lease is active.</value></data>
+  <data name="MicrophoneMeterIdleHelp.Text" xml:space="preserve"><value>Meter idle at 0%. It never animates without actual captured input.</value></data>
+  <data name="AudioTestButton.Content" xml:space="preserve"><value>Start audio test</value></data>
+  <data name="AudioTestButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Start microphone audio test</value></data>
+  <data name="VoicePreferencesCard.Header" xml:space="preserve"><value>Voice preferences</value></data>
+  <data name="VoicePreferencesCard.Description" xml:space="preserve"><value>Choose language behavior and how quickly dictation stops after a natural pause.</value></data>
+  <data name="AssistantVoiceLabel.Text" xml:space="preserve"><value>Assistant voice</value></data>
+  <data name="ServerDefaultVoiceOption.Content" xml:space="preserve"><value>Server default</value></data>
+  <data name="VoiceLanguageLabel.Text" xml:space="preserve"><value>Language</value></data>
+  <data name="AutomaticLanguageOption.Content" xml:space="preserve"><value>Detect automatically</value></data>
+  <data name="PauseSensitivityLabel.Text" xml:space="preserve"><value>Pause sensitivity</value></data>
+  <data name="PauseSensitivitySlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Choose how quickly dictation stops after a natural pause.</value></data>
+  <data name="PauseSensitivityHelp.Text" xml:space="preserve"><value>Lower values wait longer; higher values end dictation sooner. Default: balanced.</value></data>
+  <data name="VoiceRealtimeCard.Header" xml:space="preserve"><value>Realtime connection</value></data>
+  <data name="VoiceRealtimeCard.Description" xml:space="preserve"><value>Connection tests are separate from a full Live Mode session.</value></data>
+  <data name="RealtimeConnectionStatus.StatusText" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="RealtimeConnectionStatus.DetailText" xml:space="preserve"><value>No Realtime session or model-access check</value></data>
+  <data name="RealtimeConnectionTestButton.Content" xml:space="preserve"><value>Test Realtime connection</value></data>
+  <data name="RealtimeConnectionTestButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Test OpenAI Realtime connection</value></data>
+  <data name="RealtimeTestUnavailableHelp.Text" xml:space="preserve"><value>Testing requires a saved key, selected endpoint, and audio coordinator.</value></data>
+
+  <data name="BrowserHealthCard.Header" xml:space="preserve"><value>Authenticated connection health</value></data>
+  <data name="BrowserHealthCard.Description" xml:space="preserve"><value>Connected means a current, version-compatible handshake—not an open process or port.</value></data>
+  <data name="BrowserExtensionStatus.StatusText" xml:space="preserve"><value>Extension · Disconnected</value></data>
+  <data name="BrowserExtensionStatus.DetailText" xml:space="preserve"><value>Version unknown</value></data>
+  <data name="BrowserNativeHostStatus.StatusText" xml:space="preserve"><value>Native host · Not installed</value></data>
+  <data name="BrowserNativeHostStatus.DetailText" xml:space="preserve"><value>No registration has been verified</value></data>
+  <data name="BrowserPipeStatus.StatusText" xml:space="preserve"><value>Named pipe · Unavailable</value></data>
+  <data name="BrowserPipeStatus.DetailText" xml:space="preserve"><value>No same-user session is active</value></data>
+  <data name="BrowserHandshakeStatus.StatusText" xml:space="preserve"><value>Last handshake · Never</value></data>
+  <data name="BrowserHandshakeStatus.DetailText" xml:space="preserve"><value>No protocol or extension identity has been authenticated</value></data>
+  <data name="BrowserSetupCard.Header" xml:space="preserve"><value>Setup</value></data>
+  <data name="BrowserSetupCard.Description" xml:space="preserve"><value>The extension receives only approved browser context and never the OpenAI API key.</value></data>
+  <data name="BrowserSetupStepOne.Text" xml:space="preserve"><value>1. Install the Cursivis Chromium extension from the verified release package.</value></data>
+  <data name="BrowserSetupStepTwo.Text" xml:space="preserve"><value>2. Allow access only on sites where you want selected-text or form support.</value></data>
+  <data name="BrowserSetupStepThree.Text" xml:space="preserve"><value>3. Start Cursivis and complete the native-host protocol handshake.</value></data>
+  <data name="BrowserPermissionsHelp.Text" xml:space="preserve"><value>Site access is optional and requested per site. Passwords, payment fields, and silent submission remain blocked.</value></data>
+  <data name="BrowserTestButton.Content" xml:space="preserve"><value>Test connection</value></data>
+  <data name="BrowserTestButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Test browser integration connection</value></data>
+  <data name="BrowserRepairButton.Content" xml:space="preserve"><value>Repair / reconnect</value></data>
+  <data name="BrowserRepairButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Repair or reconnect browser integration</value></data>
+  <data name="BrowserActionsUnavailableHelp.Text" xml:space="preserve"><value>Test and repair are disabled until the native-host installer and bridge service are available.</value></data>
+
+  <data name="PrivacyScreenCard.Header" xml:space="preserve"><value>Visible screen access</value></data>
+  <data name="PrivacyScreenCard.Description" xml:space="preserve"><value>One-shot analysis and Navigation Guidance are separate, explicit operations.</value></data>
+  <data name="OneShotCaptureExplanation.Text" xml:space="preserve"><value>One-shot analysis captures one approved image, answers the request, and then disposes the image when it is no longer needed.</value></data>
+  <data name="NavigationCaptureExplanation.Text" xml:space="preserve"><value>Navigation Guidance shows a persistent capture indicator, waits for meaningful changes, and never streams invisible full-screen video.</value></data>
+  <data name="CaptureStopExplanation.Text" xml:space="preserve"><value>Escape, the global Cancel shortcut, the orb stop control, or a voice stop command ends capture immediately.</value></data>
+  <data name="PrivacyActiveWindowOption.Content" xml:space="preserve"><value>Active window only</value></data>
+  <data name="PrivacyActiveWindowOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Capture active window only</value></data>
+  <data name="PrivacyDisplayOption.Content" xml:space="preserve"><value>Active display after explicit approval</value></data>
+  <data name="PrivacyDisplayOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Capture active display after explicit approval</value></data>
+  <data name="PrivacyMemoryCard.Header" xml:space="preserve"><value>Personalization memory</value></data>
+  <data name="PrivacyMemoryCard.Description" xml:space="preserve"><value>Memory is opt-in, short, bounded, inspectable, and individually deletable.</value></data>
+  <data name="PersonalizationMemoryToggle.Header" xml:space="preserve"><value>Allow local preference memory</value></data>
+  <data name="PersonalizationMemoryToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="PersonalizationMemoryToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="PersonalizationMemoryToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Allow local preference memory</value></data>
+  <data name="MemoryBoundedHelp.Text" xml:space="preserve"><value>Full conversation history is never stored by default. The Quick Task definition is separate configuration.</value></data>
+  <data name="ViewMemoryButton.Content" xml:space="preserve"><value>View memory</value></data>
+  <data name="ViewMemoryButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>View saved memory entries</value></data>
+  <data name="ClearMemoryButton.Content" xml:space="preserve"><value>Clear all memory</value></data>
+  <data name="ClearMemoryButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Clear all saved memory entries</value></data>
+  <data name="PrivacyDataCard.Header" xml:space="preserve"><value>Local data handling</value></data>
+  <data name="PrivacyDataCard.Description" xml:space="preserve"><value>Clipboard, screenshots, logs, and diagnostics follow bounded, redacted policies.</value></data>
+  <data name="ProtectedClipboardToggle.Header" xml:space="preserve"><value>Allow protected clipboard fallback</value></data>
+  <data name="ProtectedClipboardToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="ProtectedClipboardToggle.OnContent" xml:space="preserve"><value>Restore when ownership is proven</value></data>
+  <data name="ProtectedClipboardToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Allow protected clipboard fallback</value></data>
+  <data name="RedactedLoggingToggle.Header" xml:space="preserve"><value>Exclude raw private content from logs</value></data>
+  <data name="RedactedLoggingToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="RedactedLoggingToggle.OnContent" xml:space="preserve"><value>Enforced</value></data>
+  <data name="RedactedLoggingToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Exclude raw private content from logs</value></data>
+  <data name="ScreenshotRetentionPolicy.Text" xml:space="preserve"><value>Screenshots are not retained by default and are excluded from diagnostics.</value></data>
+  <data name="ExtensionKeyBoundary.Text" xml:space="preserve"><value>The Chromium extension never receives or stores the OpenAI API key.</value></data>
+  <data name="PrivacyPolicyCard.Header" xml:space="preserve"><value>Action confirmation policy</value></data>
+  <data name="PrivacyPolicyCard.Description" xml:space="preserve"><value>These centralized boundaries cannot be weakened by a webpage, model response, or saved Quick Task.</value></data>
+  <data name="PolicyNoConfirmation.Text" xml:space="preserve"><value>Normally no confirmation: analyze explicit context, copy content, or open Guided Mode.</value></data>
+  <data name="PolicyContextConfirmation.Text" xml:space="preserve"><value>Context-dependent confirmation: navigation, multi-field filling, insertion, replacement, or extended screen access.</value></data>
+  <data name="PolicyAlwaysConfirmation.Text" xml:space="preserve"><value>Always fresh confirmation: submit, send, purchase, delete, post, change accounts, accept terms, or enter secrets.</value></data>
+  <data name="PolicyQuickTaskBoundary.Text" xml:space="preserve"><value>A Quick Task may propose a typed plan, but it can never bypass policy or execute arbitrary scripts.</value></data>
+  <data name="PrivacyDefaultsInfo.Title" xml:space="preserve"><value>Privacy-first initial state</value></data>
+  <data name="PrivacyDefaultsInfo.Message" xml:space="preserve"><value>Personalization memory is off, active-window scope is selected, raw private content remains excluded from logs, and high-risk actions require confirmation.</value></data>
+
+  <data name="DiagnosticsBuildCard.Header" xml:space="preserve"><value>Build</value></data>
+  <data name="DiagnosticsBuildCard.Description" xml:space="preserve"><value>Identity read from the running application assembly.</value></data>
+  <data name="DiagnosticsVersionLabel.Text" xml:space="preserve"><value>Version</value></data>
+  <data name="DiagnosticsCommitLabel.Text" xml:space="preserve"><value>Commit</value></data>
+  <data name="DiagnosticsArchitectureLabel.Text" xml:space="preserve"><value>Runtime</value></data>
+  <data name="DiagnosticsArchitectureValue.Text" xml:space="preserve"><value>Windows · x64 · self-contained · unpackaged</value></data>
+  <data name="DiagnosticsHealthCard.Header" xml:space="preserve"><value>Component health</value></data>
+  <data name="DiagnosticsHealthCard.Description" xml:space="preserve"><value>Unknown and untested components remain explicit instead of appearing healthy.</value></data>
+  <data name="DiagnosticsOpenAiStatus.StatusText" xml:space="preserve"><value>OpenAI · Not configured</value></data>
+  <data name="DiagnosticsOpenAiStatus.DetailText" xml:space="preserve"><value>No saved or tested key</value></data>
+  <data name="DiagnosticsStorageStatus.StatusText" xml:space="preserve"><value>Settings storage · Unavailable</value></data>
+  <data name="DiagnosticsStorageStatus.DetailText" xml:space="preserve"><value>No atomic persistence result</value></data>
+  <data name="DiagnosticsHotkeysStatus.StatusText" xml:space="preserve"><value>Hotkeys · Not registered</value></data>
+  <data name="DiagnosticsHotkeysStatus.DetailText" xml:space="preserve"><value>Active chord list is empty</value></data>
+  <data name="DiagnosticsBrowserStatus.StatusText" xml:space="preserve"><value>Browser bridge · Disconnected</value></data>
+  <data name="DiagnosticsBrowserStatus.DetailText" xml:space="preserve"><value>No authenticated handshake</value></data>
+  <data name="DiagnosticsMicrophoneStatus.StatusText" xml:space="preserve"><value>Microphone · Not tested</value></data>
+  <data name="DiagnosticsMicrophoneStatus.DetailText" xml:space="preserve"><value>No endpoint or capture lease</value></data>
+  <data name="DiagnosticsCaptureStatus.StatusText" xml:space="preserve"><value>Screen capture · Not tested</value></data>
+  <data name="DiagnosticsCaptureStatus.DetailText" xml:space="preserve"><value>No capture permission or frame acquired</value></data>
+  <data name="DiagnosticsExportCard.Header" xml:space="preserve"><value>Sanitized report</value></data>
+  <data name="DiagnosticsExportCard.Description" xml:space="preserve"><value>The report excludes API keys, authorization headers, raw selected text, prompts, images, audio, transcripts, and form values.</value></data>
+  <data name="DiagnosticsTextBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Sanitized diagnostics report</value></data>
+  <data name="RefreshDiagnosticsButton.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="RefreshDiagnosticsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Refresh sanitized diagnostics</value></data>
+  <data name="CopyDiagnosticsButton.Content" xml:space="preserve"><value>Copy diagnostics</value></data>
+  <data name="CopyDiagnosticsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Copy sanitized diagnostics</value></data>
+  <data name="ExportDiagnosticsButton.Content" xml:space="preserve"><value>Export</value></data>
+  <data name="ExportDiagnosticsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Export sanitized diagnostics</value></data>
+  <data name="OpenLogsButton.Content" xml:space="preserve"><value>Open logs</value></data>
+  <data name="OpenLogsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open local logs</value></data>
+  <data name="DiagnosticsUnavailableActionsHelp.Text" xml:space="preserve"><value>Export and Open Logs remain disabled until the logging and file-picker services are connected.</value></data>
+  <data name="VersionUnavailable" xml:space="preserve"><value>Unavailable</value></data>
+  <data name="BuildCommitNotEmbedded" xml:space="preserve"><value>Not embedded in this build</value></data>
+  <data name="DiagnosticsRefreshedTitle" xml:space="preserve"><value>Diagnostics refreshed</value></data>
+  <data name="DiagnosticsRefreshedMessage" xml:space="preserve"><value>The local sanitized snapshot was regenerated.</value></data>
+  <data name="DiagnosticsCopiedTitle" xml:space="preserve"><value>Copied</value></data>
+  <data name="DiagnosticsCopiedMessage" xml:space="preserve"><value>Sanitized diagnostics were copied to the clipboard.</value></data>
+  <data name="DiagnosticsCopyFailedTitle" xml:space="preserve"><value>Copy failed</value></data>
+  <data name="DiagnosticsCopyFailedMessage" xml:space="preserve"><value>The clipboard was unavailable. The report remains selected and readable here.</value></data>
+  <data name="DiagnosticsReportTitle" xml:space="preserve"><value>Cursivis sanitized diagnostics</value></data>
+  <data name="DiagnosticsGeneratedAtLabel" xml:space="preserve"><value>Generated</value></data>
+  <data name="DiagnosticsReportVersionLabel" xml:space="preserve"><value>Version</value></data>
+  <data name="DiagnosticsReportOpenAiLabel" xml:space="preserve"><value>OpenAI</value></data>
+  <data name="DiagnosticsReportBrowserLabel" xml:space="preserve"><value>Browser bridge</value></data>
+  <data name="DiagnosticsReportHotkeysLabel" xml:space="preserve"><value>Hotkeys</value></data>
+  <data name="DiagnosticsReportMicrophoneLabel" xml:space="preserve"><value>Microphone</value></data>
+  <data name="DiagnosticsReportSecretsLabel" xml:space="preserve"><value>Sensitive content</value></data>
+  <data name="DiagnosticsSecretsExcluded" xml:space="preserve"><value>Excluded</value></data>
+  <data name="StatusNotConfigured" xml:space="preserve"><value>Not configured</value></data>
+  <data name="StatusDisconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="StatusNotRegistered" xml:space="preserve"><value>Not registered</value></data>
+  <data name="StatusNotTested" xml:space="preserve"><value>Not tested</value></data>
+
+  <data name="AboutProductCard.Header" xml:space="preserve"><value>Cursivis Next</value></data>
+  <data name="AboutProductCard.Description" xml:space="preserve"><value>An OpenAI-native, cursor-first productivity layer for Windows.</value></data>
+  <data name="AboutVersionLabel.Text" xml:space="preserve"><value>Version</value></data>
+  <data name="AboutCommitLabel.Text" xml:space="preserve"><value>Build commit</value></data>
+  <data name="AboutLicenseLabel.Text" xml:space="preserve"><value>License</value></data>
+  <data name="AboutLicenseValue.Text" xml:space="preserve"><value>MIT</value></data>
+  <data name="AboutPlatformLabel.Text" xml:space="preserve"><value>Platform</value></data>
+  <data name="AboutPlatformValue.Text" xml:space="preserve"><value>Windows x64 · native WinUI 3 · macOS preparation only</value></data>
+  <data name="AboutLinksCard.Header" xml:space="preserve"><value>Project links</value></data>
+  <data name="AboutLinksCard.Description" xml:space="preserve"><value>Canonical source and current documentation.</value></data>
+  <data name="AboutRepositoryLink.Content" xml:space="preserve"><value>Canonical GitHub repository</value></data>
+  <data name="AboutRepositoryLink.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open canonical Cursivis GitHub repository</value></data>
+  <data name="AboutDocumentationLink.Content" xml:space="preserve"><value>Project documentation</value></data>
+  <data name="AboutDocumentationLink.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open Cursivis project documentation</value></data>
+  <data name="AboutOpenAiDocsLink.Content" xml:space="preserve"><value>Official OpenAI developer documentation</value></data>
+  <data name="AboutOpenAiDocsLink.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open official OpenAI developer documentation</value></data>
+  <data name="AboutAcknowledgementCard.Header" xml:space="preserve"><value>OpenAI acknowledgement</value></data>
+  <data name="AboutAcknowledgementCard.Description" xml:space="preserve"><value>Cursivis uses OpenAI as its only AI provider.</value></data>
+  <data name="AboutAcknowledgementBody.Text" xml:space="preserve"><value>Text, vision, Realtime, transcription, structured output, and tool proposals are designed around OpenAI APIs. Local policy—not model output—authorizes and verifies actions.</value></data>
+</root>

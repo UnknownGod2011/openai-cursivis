@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "cursivis.contracts": {
+        "type": "Project"
+      },
+      "cursivis.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0-windows10.0.19041": {
+      "System.Security.Cryptography.ProtectedData": {
+        "type": "Direct",
+        "requested": "[8.0.0, )",
+        "resolved": "8.0.0",
+        "contentHash": "+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg=="
+      },
+      "System.Threading.AccessControl": {
+        "type": "Direct",
+        "requested": "[8.0.0, )",
+        "resolved": "8.0.0",
+        "contentHash": "cIed5+HuYz+eV9yu9TH95zPkqmm1J9Qps9wxjB335sU8tsqc2kGdlTEH9FZzZeCS8a7mNSEsN8ZkyhQp1gfdEw=="
+      },
+      "cursivis.application": {
+        "type": "Project",
+        "dependencies": {
+          "Cursivis.Contracts": "[1.0.0, )",
+          "Cursivis.Domain": "[1.0.0, )"
+        }
+      },
+      "cursivis.contracts": {
+        "type": "Project"
+      },
+      "cursivis.domain": {
+        "type": "Project"
+      },
+      "cursivis.infrastructure.storage": {
+        "type": "Project"
+      }
+    }
+  }
+}

@@ -13,16 +13,16 @@
 
 ### Phase 1 - Foundation
 
-- [ ] Solution and dependency boundaries.
-- [ ] Domain/contracts and schema generation.
-- [ ] DI, redacted logging, single-instance/tray.
-- [ ] Atomic settings, migrations, corrupt recovery.
-- [ ] current-user secure key store and dev-only `.env` adapter.
-- [ ] Model registry and availability tests.
-- [ ] Transactional hotkey coordinator.
-- [ ] Interaction reducer and cancellation registry.
-- [ ] Fluent Settings shell, all navigation destinations, reusable controls.
-- [ ] Onboarding foundation.
+- [x] Solution and dependency boundaries.
+- [x] Domain/contracts and JSON schemas.
+- [ ] DI composition root and resident tray wiring. Redacted diagnostics and single-instance/activation primitives are implemented.
+- [x] Atomic settings, migrations, corrupt recovery.
+- [x] Current-user secure key store and dev-only `.env` adapter.
+- [ ] Model availability checks. The canonical model registry and validation tests are implemented; live availability remains opt-in.
+- [x] Transactional hotkey coordinator.
+- [x] Interaction reducer and cancellation registry.
+- [x] Fluent Settings shell, all navigation destinations, reusable controls.
+- [x] Onboarding foundation.
 
 ### Phase 2 - Context vertical slice
 

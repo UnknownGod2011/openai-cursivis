@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Cursivis.Infrastructure.Storage</RootNamespace>
+  </PropertyGroup>
+
+</Project>
