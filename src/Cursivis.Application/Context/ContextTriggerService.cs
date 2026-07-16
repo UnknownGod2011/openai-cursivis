@@ -48,27 +48,30 @@ public sealed class ContextTriggerService : IContextTriggerService
     }
 
     public async Task<ContextTriggerExecutionResult> ExecuteAsync(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         ModelIdentifier model,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(input);
+        ContextSnapshot context = input.Context;
         return await ExecuteCoreAsync(
-            context,
+            input,
             model,
             SystemInstruction,
-            context.Text,
+            context.Text ?? "Analyze the captured image and return the single most useful productivity result.",
             useConfidenceFallback: true,
             cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<ContextTriggerExecutionResult> ExecuteGuidedAsync(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         GuidedOperation operation,
         string? customInstruction,
         ModelIdentifier model,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(input);
+        ContextSnapshot context = input.Context;
         if (!Enum.IsDefined(operation))
         {
             throw new ArgumentOutOfRangeException(nameof(operation));
@@ -80,9 +83,9 @@ public sealed class ContextTriggerService : IContextTriggerService
         }
 
         string? normalizedCustomInstruction = NormalizeCustomInstruction(operation, customInstruction);
-        string userContent = BuildGuidedUserContent(context, operation, normalizedCustomInstruction);
+        string userContent = BuildGuidedUserContent(input, operation, normalizedCustomInstruction);
         return await ExecuteCoreAsync(
-            context,
+            input,
             model,
             GuidedSystemInstruction,
             userContent,
@@ -91,14 +94,15 @@ public sealed class ContextTriggerService : IContextTriggerService
     }
 
     private async Task<ContextTriggerExecutionResult> ExecuteCoreAsync(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         ModelIdentifier model,
         string systemInstruction,
         string? userContent,
         bool useConfidenceFallback,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(input);
+        ContextSnapshot context = input.Context;
         ModelDescriptor descriptor = ModelCatalog.Find(model)
             ?? throw new ArgumentException("The selected model is not in the Cursivis model registry.", nameof(model));
 
@@ -106,6 +110,12 @@ public sealed class ContextTriggerService : IContextTriggerService
             !descriptor.Capabilities.HasFlag(ModelCapabilities.StructuredOutputs))
         {
             throw new ArgumentException("The selected model cannot produce structured Responses output.", nameof(model));
+        }
+
+        if (context.Kind == ContextKind.Image &&
+            !descriptor.Capabilities.HasFlag(ModelCapabilities.ImageInput))
+        {
+            throw new ArgumentException("The selected model cannot analyze image input.", nameof(model));
         }
 
         if (context.IsExpired(_timeProvider.GetUtcNow()))
@@ -131,7 +141,10 @@ public sealed class ContextTriggerService : IContextTriggerService
             SchemaName,
             SmartResultSchema.Value,
             TimeSpan.FromSeconds(45),
-            context.Fingerprint.Value);
+            context.Fingerprint.Value,
+            input.Image is null
+                ? null
+                : new ResponseImageInput(input.Image.EncodedBytes, input.Image.MediaType));
 
         StructuredResponseResult response = await _responsesGateway
             .CreateStructuredResponseAsync(request, cancellationToken)
@@ -205,17 +218,27 @@ public sealed class ContextTriggerService : IContextTriggerService
     }
 
     private static string BuildGuidedUserContent(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         GuidedOperation operation,
         string? customInstruction)
     {
         string instruction = customInstruction ?? GuidedOperationInstructions.For(operation);
+        if (input.Context.Kind == ContextKind.Image)
+        {
+            return $"""
+                Requested operation: {operation}
+                Operation instruction: {instruction}
+
+                Apply the operation to the attached user-captured image only.
+                """;
+        }
+
         return $"""
             Requested operation: {operation}
             Operation instruction: {instruction}
 
             <selected_content>
-            {context.Text}
+            {input.Context.Text}
             </selected_content>
             """;
     }
@@ -308,7 +331,14 @@ internal static class GuidedOperationInstructions
         GuidedOperation.AddComments => "Add useful explanatory comments without adding noise.",
         GuidedOperation.FindSecurityIssues => "Identify concrete security issues and provide safe remediation guidance.",
         GuidedOperation.GenerateTests => "Generate focused tests for the selected code, including important edge cases.",
+        GuidedOperation.Describe => "Describe the captured image clearly and concisely.",
+        GuidedOperation.IdentifyObjects => "Identify the important visible objects and their relationships.",
+        GuidedOperation.ExtractText => "Extract the visible text accurately and preserve useful reading order.",
+        GuidedOperation.ExtractTable => "Extract the visible table into a clear structured text table.",
+        GuidedOperation.ExplainUserInterface => "Explain the visible user interface and what its key controls do.",
+        GuidedOperation.FindIssue => "Find the visible issue and explain a concrete fix.",
+        GuidedOperation.AnalyzeColors => "Analyze the important visible colors and provide useful hex values and names.",
         GuidedOperation.CustomTask => throw new InvalidOperationException("Custom Task requires a user instruction."),
-        _ => throw new ArgumentException("This operation requires image context.", nameof(operation)),
+        _ => throw new ArgumentException("The operation is unsupported.", nameof(operation)),
     };
 }

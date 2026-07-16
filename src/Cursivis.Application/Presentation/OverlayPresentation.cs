@@ -1,4 +1,5 @@
 using Cursivis.Domain.Interaction;
+using Cursivis.Domain.Context;
 using Cursivis.Domain.Settings;
 
 namespace Cursivis.Application.Presentation;
@@ -78,7 +79,7 @@ public sealed record ResultPanelPresentation(
             result.FinalContent,
             CanUndo: false,
             CanInsert: true,
-            CanReplace: true,
+            CanReplace: result.ContextType is not ContextKind.Image and not ContextKind.UserInterface,
             CanCopy: true,
             CanTakeAction: result.SuggestedAction.Type is not SuggestedActionType.None,
             CanRefine: true);

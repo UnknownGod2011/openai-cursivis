@@ -8,8 +8,9 @@ public sealed class ContextInteractionSession
 {
     private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
-    private ContextSnapshot? _context;
+    private ContextExecutionInput? _input;
     private SmartResult? _latestResult;
+    private string? _clipboardText;
 
     public ContextInteractionSession(TimeProvider? timeProvider = null)
     {
@@ -22,37 +23,47 @@ public sealed class ContextInteractionSession
         {
             lock (_gate)
             {
-                return _context?.Fingerprint;
+                return _input?.Context.Fingerprint;
             }
         }
     }
 
     public void Begin(ContextSnapshot context)
+        => Begin(ContextExecutionInput.FromText(context));
+
+    public void Begin(ContextExecutionInput input)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        if (context.IsExpired(_timeProvider.GetUtcNow()))
+        ArgumentNullException.ThrowIfNull(input);
+        if (input.Context.IsExpired(_timeProvider.GetUtcNow()))
         {
-            throw new ArgumentException("An interaction cannot begin with expired context.", nameof(context));
+            throw new ArgumentException("An interaction cannot begin with expired context.", nameof(input));
         }
 
         lock (_gate)
         {
-            _context = context;
+            _input = input;
             _latestResult = null;
+            _clipboardText = null;
         }
     }
 
-    public void SetResult(ContextFingerprint expectedFingerprint, SmartResult result)
+    public void SetResult(
+        ContextFingerprint expectedFingerprint,
+        SmartResult result,
+        string? clipboardText = null)
     {
         ArgumentNullException.ThrowIfNull(result);
         lock (_gate)
         {
-            if (_context is null || _context.Fingerprint != expectedFingerprint)
+            if (_input is null || _input.Context.Fingerprint != expectedFingerprint)
             {
                 throw new InvalidOperationException("The result does not belong to the active context session.");
             }
 
             _latestResult = result;
+            _clipboardText = string.IsNullOrWhiteSpace(clipboardText)
+                ? result.FinalContent
+                : clipboardText.Trim();
         }
     }
 
@@ -60,22 +71,24 @@ public sealed class ContextInteractionSession
     {
         lock (_gate)
         {
-            if (_context is null)
+            if (_input is null)
             {
-                return new ContextSessionAccess(ContextSessionAccessStatus.Missing, null, null);
+                return new ContextSessionAccess(ContextSessionAccessStatus.Missing, null, null, null);
             }
 
-            if (_context.IsExpired(_timeProvider.GetUtcNow()))
+            if (_input.Context.IsExpired(_timeProvider.GetUtcNow()))
             {
-                _context = null;
+                _input = null;
                 _latestResult = null;
-                return new ContextSessionAccess(ContextSessionAccessStatus.Expired, null, null);
+                _clipboardText = null;
+                return new ContextSessionAccess(ContextSessionAccessStatus.Expired, null, null, null);
             }
 
             return new ContextSessionAccess(
                 ContextSessionAccessStatus.Available,
-                _context,
-                _latestResult);
+                _input,
+                _latestResult,
+                _clipboardText);
         }
     }
 
@@ -83,16 +96,19 @@ public sealed class ContextInteractionSession
     {
         lock (_gate)
         {
-            _context = null;
+            _input = null;
             _latestResult = null;
+            _clipboardText = null;
         }
     }
 }
 
 public sealed class ResultAutoCopyCoordinator
 {
+    private const int MaximumRememberedOperations = 128;
     private readonly IResultClipboardService _clipboard;
-    private readonly ConcurrentDictionary<OperationId, Task<ResultClipboardWriteResult>> _writes = new();
+    private readonly ConcurrentDictionary<OperationId, Lazy<Task<ResultClipboardWriteResult>>> _writes = new();
+    private readonly ConcurrentQueue<OperationId> _operationOrder = new();
 
     public ResultAutoCopyCoordinator(IResultClipboardService clipboard)
     {
@@ -101,12 +117,36 @@ public sealed class ResultAutoCopyCoordinator
 
     public Task<ResultClipboardWriteResult> CopyFinalOnceAsync(
         OperationId operationId,
-        SmartResult result,
+        string finalText,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(result);
-        return _writes.GetOrAdd(
+        ArgumentException.ThrowIfNullOrWhiteSpace(finalText);
+        Lazy<Task<ResultClipboardWriteResult>> write = _writes.GetOrAdd(
             operationId,
-            _ => _clipboard.CopyTextAsync(result.FinalContent, cancellationToken));
+            id => new Lazy<Task<ResultClipboardWriteResult>>(
+                () =>
+                {
+                    _operationOrder.Enqueue(id);
+                    TrimCompletedHistory();
+                    return _clipboard.CopyTextAsync(finalText, cancellationToken);
+                },
+                LazyThreadSafetyMode.ExecutionAndPublication));
+        return write.Value;
+    }
+
+    private void TrimCompletedHistory()
+    {
+        while (_operationOrder.Count > MaximumRememberedOperations &&
+               _operationOrder.TryDequeue(out OperationId oldest))
+        {
+            if (_writes.TryGetValue(oldest, out Lazy<Task<ResultClipboardWriteResult>>? write) &&
+                (!write.IsValueCreated || !write.Value.IsCompleted))
+            {
+                _operationOrder.Enqueue(oldest);
+                break;
+            }
+
+            _writes.TryRemove(oldest, out _);
+        }
     }
 }

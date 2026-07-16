@@ -9,6 +9,25 @@ internal static class NativeWindowPositioner
 {
     private const uint MonitorDefaultToNearest = 2;
 
+    public static (OverlayRectangle Monitor, OverlayPoint Cursor) GetCursorMonitor()
+    {
+        if (!GetCursorPos(out Point cursor))
+        {
+            cursor = new Point { X = 0, Y = 0 };
+        }
+
+        nint monitor = MonitorFromPoint(cursor, MonitorDefaultToNearest);
+        MonitorInfo info = MonitorInfo.Create();
+        OverlayRectangle bounds = monitor != nint.Zero && GetMonitorInfo(monitor, ref info)
+            ? new OverlayRectangle(
+                info.Monitor.Left,
+                info.Monitor.Top,
+                Math.Max(1, info.Monitor.Right - info.Monitor.Left),
+                Math.Max(1, info.Monitor.Bottom - info.Monitor.Top))
+            : new OverlayRectangle(0, 0, GetSystemMetrics(0), GetSystemMetrics(1));
+        return (bounds, new OverlayPoint(cursor.X, cursor.Y));
+    }
+
     public static OverlayRectangle GetNearCursorPlacement(
         nint windowHandle,
         int logicalWidth,

@@ -19,23 +19,28 @@ internal sealed class DeterministicResponsesGateway : IResponsesGateway
         await Task.Delay(TimeSpan.FromMilliseconds(900), cancellationToken);
         string operation = ReadOperation(request.UserContent);
         string selectedText = ReadSelectedText(request.UserContent);
-        string finalContent = operation == "Smart"
-            ? $"Mock Smart Mode result for: {selectedText}"
-            : $"Mock Guided Mode {operation} result for the same context: {selectedText}";
+        bool isImage = request.Image is not null;
+        string finalContent = isImage
+            ? operation == "Smart"
+                ? "Mock vision result for the captured image."
+                : $"Mock Guided Mode {operation} result for the same captured image."
+            : operation == "Smart"
+                ? $"Mock Smart Mode result for: {selectedText}"
+                : $"Mock Guided Mode {operation} result for the same context: {selectedText}";
 
         string json = JsonSerializer.Serialize(new
         {
             schemaVersion = 1,
-            contextType = TextContextKindClassifier.Classify(selectedText)
-                .ToString()
-                .ToLowerInvariant(),
-            intent = GetIntent(operation),
+            contextType = isImage
+                ? "image"
+                : TextContextKindClassifier.Classify(selectedText).ToString().ToLowerInvariant(),
+            intent = isImage && operation == "Smart" ? "identify" : GetIntent(operation),
             confidence = 0.97,
             finalContent,
             suggestedAction = new
             {
-                type = "replace_selection",
-                summary = "Replace the selected text",
+                type = isImage ? "copy" : "replace_selection",
+                summary = isImage ? "Copy the image analysis" : "Replace the selected text",
             },
             riskHint = "low",
             confirmationHint = "context_dependent",

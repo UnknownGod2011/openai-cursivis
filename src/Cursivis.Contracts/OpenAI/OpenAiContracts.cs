@@ -21,6 +21,10 @@ public sealed record OpenAiFailure(
     bool Retryable,
     string? RequestId = null);
 
+public sealed record ResponseImageInput(
+    ReadOnlyMemory<byte> EncodedBytes,
+    string MediaType);
+
 public sealed record StructuredResponseRequest(
     string Model,
     string SystemInstruction,
@@ -28,7 +32,8 @@ public sealed record StructuredResponseRequest(
     string SchemaName,
     string JsonSchema,
     TimeSpan Timeout,
-    string? OperationId = null);
+    string? OperationId = null,
+    ResponseImageInput? Image = null);
 
 public sealed record StructuredResponseResult(
     bool Succeeded,

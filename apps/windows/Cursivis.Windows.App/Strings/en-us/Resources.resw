@@ -588,6 +588,7 @@
   <data name="GuidedOperationExplainUserInterface" xml:space="preserve"><value>Explain this UI</value></data>
   <data name="GuidedOperationFindIssue" xml:space="preserve"><value>Find the issue</value></data>
   <data name="GuidedOperationAnalyzeColors" xml:space="preserve"><value>Analyze colors</value></data>
+  <data name="ContextResultColorDetectedOperation" xml:space="preserve"><value>Color detected</value></data>
   <data name="GuidedOperationCustomTask" xml:space="preserve"><value>Custom task</value></data>
   <data name="ContextOrbInsertingStatus" xml:space="preserve"><value>Inserting result</value></data>
   <data name="ContextOrbInsertedStatus" xml:space="preserve"><value>Inserted</value></data>
@@ -598,4 +599,6 @@
   <data name="ContextOrbCodeCapturedStatus" xml:space="preserve"><value>Code selection captured</value></data>
   <data name="ContextOrbImageCapturedStatus" xml:space="preserve"><value>Image captured</value></data>
   <data name="ContextOrbSmartModeDetail" xml:space="preserve"><value>Smart Mode is generating a result. Cancel anytime.</value></data>
+  <data name="RegionSelectionTitle.Text" xml:space="preserve"><value>Select visual context</value></data>
+  <data name="RegionSelectionHint.Text" xml:space="preserve"><value>Drag to analyze an image · Click to copy a color · Esc to cancel</value></data>
 </root>

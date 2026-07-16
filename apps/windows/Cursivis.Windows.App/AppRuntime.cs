@@ -11,6 +11,7 @@ using Cursivis.Windows.App.Testing;
 using Cursivis.Infrastructure.OpenAI;
 using Cursivis.Infrastructure.Storage.Persistence;
 using Cursivis.Windows.Platform.ClipboardServices;
+using Cursivis.Windows.Platform.Capture;
 using Cursivis.Windows.Platform.Foreground;
 using Cursivis.Windows.Platform.Hotkeys;
 using Cursivis.Windows.Platform.Overlays;
@@ -182,6 +183,9 @@ public sealed class AppRuntime : IAsyncDisposable
             new WindowsProtectedClipboardSelectionReader(),
         ];
         ISelectionCaptureService capture = new LayeredSelectionCaptureService(foreground, readers);
+        IRegionContextCaptureService regionCapture = new RegionContextCaptureService(
+            foreground,
+            new WindowsScreenCaptureService());
         ISelectionReplacementService replacement = new WindowsSelectionReplacementService(foreground, readers);
         ITextInsertionService insertion = new WindowsTextInsertionService(foreground);
         IResultClipboardService clipboard = new WindowsResultClipboardService();
@@ -192,6 +196,7 @@ public sealed class AppRuntime : IAsyncDisposable
         var foregroundActivator = new Win32ForegroundWindowActivator();
         var controller = new ContextTriggerController(
             capture,
+            regionCapture,
             contextService,
             replacement,
             insertion,

@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Cursivis.Application.Context;
 using Cursivis.Application.OpenAI;
 using Cursivis.Contracts.OpenAI;
 using Cursivis.Domain.Models;
@@ -91,11 +92,25 @@ public sealed partial class OpenAiResponsesGateway(
         try
         {
             ResponsesClient client = new(apiKey);
+            List<ResponseContentPart> userContent =
+            [
+                ResponseContentPart.CreateInputTextPart(request.UserContent),
+            ];
+            if (request.Image is not null)
+            {
+                BinaryData image = BinaryData.FromBytes(
+                    request.Image.EncodedBytes,
+                    request.Image.MediaType);
+                userContent.Add(ResponseContentPart.CreateInputImagePart(
+                    image,
+                    ResponseImageDetailLevel.High));
+            }
+
             CreateResponseOptions options = new(
                 request.Model,
                 [
                     ResponseItem.CreateDeveloperMessageItem(request.SystemInstruction),
-                    ResponseItem.CreateUserMessageItem(request.UserContent),
+                    ResponseItem.CreateUserMessageItem(userContent),
                 ])
             {
                 StoredOutputEnabled = false,
@@ -168,6 +183,20 @@ public sealed partial class OpenAiResponsesGateway(
         if (string.IsNullOrWhiteSpace(request.UserContent) || request.UserContent.Length > MaximumInputCharacters)
         {
             throw new ArgumentException("The user input is empty or too large.", nameof(request));
+        }
+
+        if (request.Image is not null)
+        {
+            if (request.Image.EncodedBytes.IsEmpty ||
+                request.Image.EncodedBytes.Length > ContextImagePayload.MaximumEncodedBytes)
+            {
+                throw new ArgumentOutOfRangeException(nameof(request), "The image input is empty or too large.");
+            }
+
+            if (request.Image.MediaType is not ("image/png" or "image/jpeg" or "image/webp"))
+            {
+                throw new ArgumentException("The image input media type is unsupported.", nameof(request));
+            }
         }
 
         if (!SchemaNamePattern().IsMatch(request.SchemaName))

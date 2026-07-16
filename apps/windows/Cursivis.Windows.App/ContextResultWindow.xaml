@@ -171,16 +171,33 @@
                             HorizontalScrollBarVisibility="Disabled"
                             VerticalScrollBarVisibility="Auto"
                             ZoomMode="Disabled">
-                            <TextBlock
-                                x:Name="ResultText"
-                                x:Uid="ContextResultText"
-                                AutomationProperties.AutomationId="ContextResultContent"
-                                AutomationProperties.LiveSetting="Polite"
-                                FontSize="18"
-                                Foreground="{ThemeResource OverlayTextBrush}"
-                                IsTextSelectionEnabled="True"
-                                LineHeight="27"
-                                TextWrapping="Wrap" />
+                            <Grid x:Name="ResultContentGrid">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="ColorPreviewColumn" Width="0" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border
+                                    x:Name="ColorPreviewBorder"
+                                    Width="88"
+                                    Height="88"
+                                    VerticalAlignment="Top"
+                                    AutomationProperties.AutomationId="ContextResultColorPreview"
+                                    BorderBrush="{ThemeResource OverlayBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="16"
+                                    Visibility="Collapsed" />
+                                <TextBlock
+                                    x:Name="ResultText"
+                                    Grid.Column="1"
+                                    x:Uid="ContextResultText"
+                                    AutomationProperties.AutomationId="ContextResultContent"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    FontSize="18"
+                                    Foreground="{ThemeResource OverlayTextBrush}"
+                                    IsTextSelectionEnabled="True"
+                                    LineHeight="27"
+                                    TextWrapping="Wrap" />
+                            </Grid>
                         </ScrollViewer>
 
                         <Border

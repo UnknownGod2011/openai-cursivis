@@ -47,6 +47,26 @@ public sealed class OverlayPresentationTests
         Assert.Equal("No selection found", presentation.NoticeTitle);
     }
 
+    [Fact]
+    public void ImagePresentation_DisablesSelectionReplacementButKeepsUsefulActions()
+    {
+        var result = new SmartResult(
+            ContextKind.Image,
+            SmartIntent.Identify,
+            0.94,
+            "A grounded image description.",
+            new SuggestedAction(SuggestedActionType.Copy, "Copy the analysis"),
+            RiskLevel.None,
+            ConfirmationHint.None);
+
+        ResultPanelPresentation presentation = ResultPanelPresentation.FromResult(result, guidedMode: false);
+
+        Assert.False(presentation.CanReplace);
+        Assert.True(presentation.CanCopy);
+        Assert.True(presentation.CanInsert);
+        Assert.True(presentation.CanTakeAction);
+    }
+
     [Theory]
     [InlineData(ApplicationTheme.Light, false, false, EffectiveOverlayTheme.Light)]
     [InlineData(ApplicationTheme.Dark, false, false, EffectiveOverlayTheme.Dark)]

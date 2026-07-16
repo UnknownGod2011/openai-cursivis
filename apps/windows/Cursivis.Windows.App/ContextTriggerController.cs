@@ -15,6 +15,7 @@ public sealed class ContextTriggerController : IDisposable
 {
     private static readonly TimeSpan ContextLifetime = TimeSpan.FromMinutes(5);
     private readonly ISelectionCaptureService _capture;
+    private readonly IRegionContextCaptureService _regionCapture;
     private readonly IContextTriggerService _trigger;
     private readonly ISelectionReplacementService _replacement;
     private readonly ITextInsertionService _insertion;
@@ -30,6 +31,7 @@ public sealed class ContextTriggerController : IDisposable
 
     public ContextTriggerController(
         ISelectionCaptureService capture,
+        IRegionContextCaptureService regionCapture,
         IContextTriggerService trigger,
         ISelectionReplacementService replacement,
         ITextInsertionService insertion,
@@ -40,6 +42,7 @@ public sealed class ContextTriggerController : IDisposable
         ModelIdentifier model)
     {
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
+        _regionCapture = regionCapture ?? throw new ArgumentNullException(nameof(regionCapture));
         _trigger = trigger ?? throw new ArgumentNullException(nameof(trigger));
         _replacement = replacement ?? throw new ArgumentNullException(nameof(replacement));
         _insertion = insertion ?? throw new ArgumentNullException(nameof(insertion));
@@ -159,7 +162,38 @@ public sealed class ContextTriggerController : IDisposable
 
         SelectionCaptureResult capture = await _capture.CaptureAsync(ContextLifetime, operation.Token);
         LastCaptureLatency = capture.Duration;
-        if (capture.Status != SelectionCaptureStatus.Captured || capture.Context is null)
+        ContextExecutionInput input;
+        DetectedColor? detectedColor = null;
+        if (capture.Status == SelectionCaptureStatus.Captured && capture.Context is not null)
+        {
+            input = ContextExecutionInput.FromText(capture.Context);
+        }
+        else if (capture.Status == SelectionCaptureStatus.NoSelection)
+        {
+            _orb.Hide();
+            RegionContextCaptureResult region = await _regionCapture.CaptureAsync(
+                ContextLifetime,
+                operation.Token);
+            if (region.Status == RegionContextCaptureStatus.Cancelled)
+            {
+                _orb.Hide();
+                return;
+            }
+
+            if (region.Input is null)
+            {
+                _resultWindow.ShowFailure(
+                    ResourceText.Get("ContextResultNoSelectionTitle"),
+                    string.IsNullOrWhiteSpace(region.SafeDetail)
+                        ? GetCaptureFailureMessage(capture.Status)
+                        : region.SafeDetail);
+                return;
+            }
+
+            input = region.Input;
+            detectedColor = region.Color;
+        }
+        else
         {
             if (capture.Status == SelectionCaptureStatus.Cancelled)
             {
@@ -174,14 +208,37 @@ public sealed class ContextTriggerController : IDisposable
             return;
         }
 
-        _session.Begin(capture.Context);
+        _session.Begin(input);
+        ContextSnapshot context = input.Context;
+        if (capture.Status == SelectionCaptureStatus.NoSelection)
+        {
+            nint sourceHandle = GetTargetHandle(context);
+            if (sourceHandle != nint.Zero)
+            {
+                _ = _activator.TryActivate(sourceHandle);
+            }
+        }
+
         _orb.ShowState(
             OrbPresentationState.Generating,
-            GetCapturedContextStatus(capture.Context.Kind),
+            GetCapturedContextStatus(context.Kind),
             ResourceText.Get("ContextOrbSmartModeDetail"));
 
+        if (detectedColor is not null)
+        {
+            SmartResult colorResult = CreateColorResult(detectedColor);
+            await PresentCompletedResultAsync(
+                new OperationId(operationValue),
+                context,
+                colorResult,
+                operation.Token,
+                detectedColor.Hex,
+                detectedColor);
+            return;
+        }
+
         ContextTriggerExecutionResult execution = await _trigger.ExecuteAsync(
-            capture.Context,
+            input,
             _model,
             operation.Token);
         LastModelLatency = execution.Duration;
@@ -202,14 +259,14 @@ public sealed class ContextTriggerController : IDisposable
 
         if (execution.Status == ContextTriggerExecutionStatus.NeedsGuidedMode)
         {
-            _session.SetResult(capture.Context.Fingerprint, execution.Result);
-            _orb.ShowGuidedOptions(capture.Context.Kind);
+            _session.SetResult(context.Fingerprint, execution.Result);
+            _orb.ShowGuidedOptions(context.Kind);
             return;
         }
 
         await PresentCompletedResultAsync(
             new OperationId(operationValue),
-            capture.Context,
+            context,
             execution.Result,
             operation.Token);
     }
@@ -222,7 +279,8 @@ public sealed class ContextTriggerController : IDisposable
             return;
         }
 
-        ResultClipboardWriteResult copy = await _clipboard.CopyTextAsync(session.LatestResult.FinalContent);
+        ResultClipboardWriteResult copy = await _clipboard.CopyTextAsync(
+            session.ClipboardText ?? session.LatestResult.FinalContent);
         ShowCopyNotice(copy);
     }
 
@@ -343,6 +401,7 @@ public sealed class ContextTriggerController : IDisposable
         }
 
         ContextSnapshot context = session.Context;
+        ContextExecutionInput input = session.Input!;
         _operations.CancelAll();
         Guid operationValue = Guid.NewGuid();
         using OperationLease operation = _operations.Begin(operationValue);
@@ -352,7 +411,7 @@ public sealed class ContextTriggerController : IDisposable
             ResourceText.Get("ContextOrbCancelHintText"));
 
         ContextTriggerExecutionResult execution = await _trigger.ExecuteGuidedAsync(
-            context,
+            input,
             guidedOperation,
             customInstruction,
             _model,
@@ -385,7 +444,9 @@ public sealed class ContextTriggerController : IDisposable
         OperationId operationId,
         ContextSnapshot context,
         SmartResult result,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? clipboardText = null,
+        DetectedColor? detectedColor = null)
     {
         ContextSessionAccess session = _session.GetCurrent();
         if (session.Context?.Fingerprint != context.Fingerprint)
@@ -393,20 +454,37 @@ public sealed class ContextTriggerController : IDisposable
             return;
         }
 
-        _session.SetResult(context.Fingerprint, result);
+        _session.SetResult(context.Fingerprint, result, clipboardText);
         _orb.ShowState(
             OrbPresentationState.Done,
             ResourceText.Get("ContextOrbReadyStatus"),
             ResourceText.Get("ContextOrbReadyDetail"));
-        _resultWindow.ShowResult(result, guidedMode: false);
+        if (detectedColor is null)
+        {
+            _resultWindow.ShowResult(result, guidedMode: false);
+        }
+        else
+        {
+            _resultWindow.ShowColorResult(result, detectedColor);
+        }
 
+        string textToCopy = _session.GetCurrent().ClipboardText ?? result.FinalContent;
         ResultClipboardWriteResult copy = await _autoCopy.CopyFinalOnceAsync(
             operationId,
-            result,
+            textToCopy,
             cancellationToken);
         ShowCopyNotice(copy);
         _orb.Hide();
     }
+
+    private static SmartResult CreateColorResult(DetectedColor color) => new(
+        ContextKind.Image,
+        SmartIntent.Identify,
+        1d,
+        $"{color.Hex}\nRGB ({color.Red}, {color.Green}, {color.Blue})\n{color.ApproximateName}",
+        new SuggestedAction(SuggestedActionType.Copy, "Copy the detected hex color"),
+        Cursivis.Domain.Actions.RiskLevel.None,
+        ConfirmationHint.None);
 
     private void ShowCopyNotice(ResultClipboardWriteResult copy)
     {
@@ -568,7 +646,12 @@ public sealed class ContextTriggerController : IDisposable
     private nint GetCurrentTargetHandle()
     {
         ContextSnapshot? context = _session.GetCurrent().Context;
-        return context is not null && long.TryParse(
+        return context is null ? nint.Zero : GetTargetHandle(context);
+    }
+
+    private static nint GetTargetHandle(ContextSnapshot context)
+    {
+        return long.TryParse(
             context.Target.WindowId,
             System.Globalization.NumberStyles.HexNumber,
             System.Globalization.CultureInfo.InvariantCulture,

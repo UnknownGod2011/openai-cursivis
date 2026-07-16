@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Cursivis.Contracts.OpenAI;
 using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
@@ -46,6 +47,37 @@ public interface ISelectionCaptureService
         CancellationToken cancellationToken = default);
 }
 
+public readonly record struct ScreenAnchor(int X, int Y);
+
+public sealed record DetectedColor(
+    byte Red,
+    byte Green,
+    byte Blue,
+    string Hex,
+    string ApproximateName);
+
+public enum RegionContextCaptureStatus
+{
+    ImageCaptured,
+    ColorDetected,
+    Cancelled,
+    Failed,
+}
+
+public sealed record RegionContextCaptureResult(
+    RegionContextCaptureStatus Status,
+    ContextExecutionInput? Input,
+    DetectedColor? Color,
+    ScreenAnchor Anchor,
+    string SafeDetail);
+
+public interface IRegionContextCaptureService
+{
+    Task<RegionContextCaptureResult> CaptureAsync(
+        TimeSpan contextLifetime,
+        CancellationToken cancellationToken = default);
+}
+
 public enum TextReplacementStatus
 {
     Replaced,
@@ -88,6 +120,99 @@ public interface ITextInsertionService
         CancellationToken cancellationToken = default);
 }
 
+public sealed class ContextImagePayload
+{
+    public const int MaximumEncodedBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> SupportedMediaTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+    };
+
+    public ContextImagePayload(byte[] encodedBytes, string mediaType, int pixelWidth, int pixelHeight)
+    {
+        ArgumentNullException.ThrowIfNull(encodedBytes);
+        if (encodedBytes.Length is 0 or > MaximumEncodedBytes)
+        {
+            throw new ArgumentOutOfRangeException(nameof(encodedBytes));
+        }
+
+        if (string.IsNullOrWhiteSpace(mediaType) || !SupportedMediaTypes.Contains(mediaType.Trim()))
+        {
+            throw new ArgumentException("The captured image media type is unsupported.", nameof(mediaType));
+        }
+
+        if (pixelWidth <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pixelWidth));
+        }
+
+        if (pixelHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pixelHeight));
+        }
+
+        // Own an immutable copy so the digest/fingerprint cannot be invalidated
+        // by a caller reusing its capture buffer after the session begins.
+        EncodedBytes = encodedBytes.ToArray();
+        MediaType = mediaType.Trim().ToLowerInvariant();
+        PixelWidth = pixelWidth;
+        PixelHeight = pixelHeight;
+    }
+
+    public ReadOnlyMemory<byte> EncodedBytes { get; }
+
+    public string MediaType { get; }
+
+    public int PixelWidth { get; }
+
+    public int PixelHeight { get; }
+}
+
+public sealed class ContextExecutionInput
+{
+    private ContextExecutionInput(ContextSnapshot context, ContextImagePayload? image)
+    {
+        Context = context;
+        Image = image;
+    }
+
+    public ContextSnapshot Context { get; }
+
+    public ContextImagePayload? Image { get; }
+
+    public static ContextExecutionInput FromText(ContextSnapshot context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Kind == ContextKind.Image)
+        {
+            throw new ArgumentException("Image context requires its captured payload.", nameof(context));
+        }
+
+        return new ContextExecutionInput(context, null);
+    }
+
+    public static ContextExecutionInput FromImage(ContextSnapshot context, ContextImagePayload image)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(image);
+        if (context.Kind != ContextKind.Image)
+        {
+            throw new ArgumentException("An image payload requires image context.", nameof(context));
+        }
+
+        Span<byte> digest = stackalloc byte[SHA256.HashSizeInBytes];
+        SHA256.HashData(image.EncodedBytes.Span, digest);
+        if (!digest.SequenceEqual(context.ImageDigest.Span))
+        {
+            throw new ArgumentException("The captured image does not match its context fingerprint.", nameof(image));
+        }
+
+        return new ContextExecutionInput(context, image);
+    }
+}
+
 public enum ContextTriggerExecutionStatus
 {
     Completed,
@@ -107,12 +232,12 @@ public sealed record ContextTriggerExecutionResult(
 public interface IContextTriggerService
 {
     Task<ContextTriggerExecutionResult> ExecuteAsync(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         ModelIdentifier model,
         CancellationToken cancellationToken = default);
 
     Task<ContextTriggerExecutionResult> ExecuteGuidedAsync(
-        ContextSnapshot context,
+        ContextExecutionInput input,
         GuidedOperation operation,
         string? customInstruction,
         ModelIdentifier model,
@@ -128,8 +253,12 @@ public enum ContextSessionAccessStatus
 
 public sealed record ContextSessionAccess(
     ContextSessionAccessStatus Status,
-    ContextSnapshot? Context,
-    SmartResult? LatestResult);
+    ContextExecutionInput? Input,
+    SmartResult? LatestResult,
+    string? ClipboardText)
+{
+    public ContextSnapshot? Context => Input?.Context;
+}
 
 public enum ResultClipboardWriteStatus
 {

@@ -28,6 +28,21 @@ public sealed class ContextInteractionSessionTests
     }
 
     [Fact]
+    public void SetResult_WithClipboardOverride_PreservesVisibleResultAndCopyValue()
+    {
+        var session = new ContextInteractionSession(new MutableTimeProvider(Now));
+        ContextSnapshot context = CreateContext();
+        SmartResult result = CreateResult("#12ABEF\nRGB (18, 171, 239)\nblue");
+
+        session.Begin(context);
+        session.SetResult(context.Fingerprint, result, "#12ABEF");
+        ContextSessionAccess access = session.GetCurrent();
+
+        Assert.Equal(result.FinalContent, access.LatestResult?.FinalContent);
+        Assert.Equal("#12ABEF", access.ClipboardText);
+    }
+
+    [Fact]
     public void GetCurrent_AfterExpiry_ClearsSensitiveContext()
     {
         var time = new MutableTimeProvider(Now);
@@ -51,11 +66,28 @@ public sealed class ContextInteractionSessionTests
         OperationId operation = OperationId.New();
         SmartResult result = CreateResult("Copied once");
 
-        ResultClipboardWriteResult first = await coordinator.CopyFinalOnceAsync(operation, result);
-        ResultClipboardWriteResult second = await coordinator.CopyFinalOnceAsync(operation, result);
+        ResultClipboardWriteResult first = await coordinator.CopyFinalOnceAsync(operation, result.FinalContent);
+        ResultClipboardWriteResult second = await coordinator.CopyFinalOnceAsync(operation, result.FinalContent);
 
         Assert.Equal(ResultClipboardWriteStatus.Copied, first.Status);
         Assert.Same(first, second);
+        Assert.Equal(1, clipboard.CallCount);
+        Assert.Equal("Copied once", clipboard.LastText);
+    }
+
+    [Fact]
+    public async Task CopyFinalOnceAsync_ConcurrentCompletion_CopiesExactlyOnce()
+    {
+        var clipboard = new RecordingClipboardService(ResultClipboardWriteStatus.Copied);
+        var coordinator = new ResultAutoCopyCoordinator(clipboard);
+        OperationId operation = OperationId.New();
+
+        Task<ResultClipboardWriteResult>[] writes = Enumerable.Range(0, 32)
+            .Select(_ => Task.Run(() => coordinator.CopyFinalOnceAsync(operation, "Copied once")))
+            .ToArray();
+        ResultClipboardWriteResult[] results = await Task.WhenAll(writes);
+
+        Assert.All(results, result => Assert.Equal(ResultClipboardWriteStatus.Copied, result.Status));
         Assert.Equal(1, clipboard.CallCount);
         Assert.Equal("Copied once", clipboard.LastText);
     }
@@ -69,11 +101,25 @@ public sealed class ContextInteractionSessionTests
 
         ResultClipboardWriteResult copy = await coordinator.CopyFinalOnceAsync(
             OperationId.New(),
-            result);
+            result.FinalContent);
 
         Assert.Equal(ResultClipboardWriteStatus.Failed, copy.Status);
         Assert.Equal("Still visible", result.FinalContent);
         Assert.Equal(1, clipboard.CallCount);
+    }
+
+    [Fact]
+    public async Task CopyFinalOnceAsync_ColorResult_CopiesHexInsteadOfDisplayText()
+    {
+        var clipboard = new RecordingClipboardService(ResultClipboardWriteStatus.Copied);
+        var coordinator = new ResultAutoCopyCoordinator(clipboard);
+        OperationId operation = OperationId.New();
+
+        await coordinator.CopyFinalOnceAsync(operation, "#12ABEF");
+        await coordinator.CopyFinalOnceAsync(operation, "#12ABEF");
+
+        Assert.Equal(1, clipboard.CallCount);
+        Assert.Equal("#12ABEF", clipboard.LastText);
     }
 
     private static ContextSnapshot CreateContext() => ContextSnapshot.FromText(
@@ -103,7 +149,9 @@ public sealed class ContextInteractionSessionTests
     private sealed class RecordingClipboardService(ResultClipboardWriteStatus status)
         : IResultClipboardService
     {
-        public int CallCount { get; private set; }
+        private int _callCount;
+
+        public int CallCount => _callCount;
 
         public string? LastText { get; private set; }
 
@@ -111,7 +159,7 @@ public sealed class ContextInteractionSessionTests
             string text,
             CancellationToken cancellationToken = default)
         {
-            CallCount++;
+            Interlocked.Increment(ref _callCount);
             LastText = text;
             return Task.FromResult(new ResultClipboardWriteResult(status, status.ToString()));
         }

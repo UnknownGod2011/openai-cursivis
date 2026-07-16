@@ -1,4 +1,5 @@
 using System.Numerics;
+using Cursivis.Application.Context;
 using Cursivis.Application.Presentation;
 using Cursivis.Domain.Interaction;
 using Cursivis.Infrastructure.Storage.Persistence;
@@ -27,6 +28,7 @@ public sealed partial class ContextResultWindow : Window
     private readonly InputNonClientPointerSource _nonClientPointerSource;
     private readonly OverlaySizeStore _sizeStore;
     private OverlaySize? _savedLogicalSize;
+    private DetectedColor? _detectedColor;
     private ResultPanelPresentation _presentation = ResultPanelPresentation.Failure(
         "Waiting for context",
         "Select content and invoke Cursivis.");
@@ -94,6 +96,7 @@ public sealed partial class ContextResultWindow : Window
 
     public void ShowResult(SmartResult result, bool guidedMode)
     {
+        _detectedColor = null;
         _presentation = ResultPanelPresentation.FromResult(result, guidedMode);
         if (guidedMode)
         {
@@ -107,8 +110,26 @@ public sealed partial class ContextResultWindow : Window
         ShowWithoutActivation();
     }
 
+    public void ShowColorResult(SmartResult result, DetectedColor color)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(color);
+        _detectedColor = color;
+        _presentation = ResultPanelPresentation.FromResult(result, guidedMode: false) with
+        {
+            OperationLabel = ResourceText.Get("ContextResultColorDetectedOperation"),
+            CanInsert = false,
+            CanReplace = false,
+            CanTakeAction = false,
+            CanRefine = false,
+        };
+        ApplyPresentation(_presentation);
+        ShowWithoutActivation();
+    }
+
     public void ShowFailure(string heading, string message)
     {
+        _detectedColor = null;
         _presentation = ResultPanelPresentation.Failure(heading, message);
         ApplyPresentation(_presentation);
         ShowWithoutActivation();
@@ -145,6 +166,17 @@ public sealed partial class ContextResultWindow : Window
         OperationLabelText.Text = presentation.OperationLabel;
         ContextLabelText.Text = presentation.ContextLabel;
         ResultText.Text = presentation.Content;
+        bool showsColor = _detectedColor is not null;
+        ColorPreviewColumn.Width = new GridLength(showsColor ? 104 : 0);
+        ColorPreviewBorder.Visibility = showsColor ? Visibility.Visible : Visibility.Collapsed;
+        if (_detectedColor is { } color)
+        {
+            ColorPreviewBorder.Background = new SolidColorBrush(
+                global::Windows.UI.Color.FromArgb(255, color.Red, color.Green, color.Blue));
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                ColorPreviewBorder,
+                $"{color.ApproximateName}, {color.Hex}");
+        }
         StreamingRing.IsActive = presentation.Status == ResultPanelStatus.Streaming;
         StreamingRing.Visibility = StreamingRing.IsActive ? Visibility.Visible : Visibility.Collapsed;
 

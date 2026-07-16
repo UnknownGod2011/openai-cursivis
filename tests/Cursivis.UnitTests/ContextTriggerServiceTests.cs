@@ -18,7 +18,7 @@ public sealed class ContextTriggerServiceTests
         var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
 
         ContextTriggerExecutionResult result = await service.ExecuteAsync(
-            CreateContext(),
+            CreateInput(),
             ModelCatalog.Balanced,
             CancellationToken.None);
 
@@ -37,7 +37,7 @@ public sealed class ContextTriggerServiceTests
             new FixedTimeProvider(Now));
 
         ContextTriggerExecutionResult result = await service.ExecuteAsync(
-            CreateContext(),
+            CreateInput(),
             ModelCatalog.Economy,
             CancellationToken.None);
 
@@ -53,7 +53,7 @@ public sealed class ContextTriggerServiceTests
             new FixedTimeProvider(Now));
 
         ContextTriggerExecutionResult result = await service.ExecuteAsync(
-            CreateContext(),
+            CreateInput(),
             ModelCatalog.Balanced,
             CancellationToken.None);
 
@@ -71,7 +71,7 @@ public sealed class ContextTriggerServiceTests
             new FixedTimeProvider(Now));
 
         ContextTriggerExecutionResult result = await service.ExecuteAsync(
-            CreateContext(),
+            CreateInput(),
             ModelCatalog.Balanced,
             CancellationToken.None);
 
@@ -87,7 +87,7 @@ public sealed class ContextTriggerServiceTests
         ContextSnapshot context = CreateContext();
 
         ContextTriggerExecutionResult result = await service.ExecuteGuidedAsync(
-            context,
+            ContextExecutionInput.FromText(context),
             GuidedOperation.Summarize,
             customInstruction: null,
             ModelCatalog.Balanced,
@@ -106,13 +106,63 @@ public sealed class ContextTriggerServiceTests
         var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.ExecuteGuidedAsync(
-            CreateContext(),
+            CreateInput(),
             GuidedOperation.CustomTask,
             " ",
             ModelCatalog.Balanced,
             CancellationToken.None));
 
         Assert.Null(gateway.LastRequest);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ImageContext_UsesTypedResponsesVisionInput()
+    {
+        var gateway = new StubResponsesGateway(SuccessJson(confidence: 0.90));
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+        byte[] png = [137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4];
+        ContextExecutionInput input = CreateImageInput(png);
+
+        ContextTriggerExecutionResult result = await service.ExecuteAsync(
+            input,
+            ModelCatalog.Balanced,
+            CancellationToken.None);
+
+        Assert.Equal(ContextTriggerExecutionStatus.Completed, result.Status);
+        Assert.Equal("image/png", gateway.LastRequest?.Image?.MediaType);
+        Assert.True(gateway.LastRequest?.Image?.EncodedBytes.Span.SequenceEqual(png));
+        Assert.Contains("captured image", gateway.LastRequest?.UserContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteGuidedAsync_ImageContext_ReusesFingerprintAndImagePayload()
+    {
+        var gateway = new StubResponsesGateway(SuccessJson(confidence: 0.90));
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+        byte[] png = [137, 80, 78, 71, 13, 10, 26, 10, 8, 7, 6, 5];
+        ContextExecutionInput input = CreateImageInput(png);
+
+        ContextTriggerExecutionResult result = await service.ExecuteGuidedAsync(
+            input,
+            GuidedOperation.ExtractText,
+            customInstruction: null,
+            ModelCatalog.Balanced,
+            CancellationToken.None);
+
+        Assert.Equal(ContextTriggerExecutionStatus.Completed, result.Status);
+        Assert.Equal(input.Context.Fingerprint.Value, gateway.LastRequest?.OperationId);
+        Assert.NotNull(input.Image);
+        Assert.True(gateway.LastRequest?.Image?.EncodedBytes.Span.SequenceEqual(png));
+        Assert.Contains("attached user-captured image", gateway.LastRequest?.UserContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FromImage_MismatchedPayload_RejectsBeforeModelRequest()
+    {
+        ContextExecutionInput valid = CreateImageInput([1, 2, 3, 4]);
+        var mismatched = new ContextImagePayload([4, 3, 2, 1], "image/png", 1, 1);
+
+        Assert.Throws<ArgumentException>(() => ContextExecutionInput.FromImage(valid.Context, mismatched));
     }
 
     private static ContextSnapshot CreateContext() => ContextSnapshot.FromText(
@@ -122,6 +172,22 @@ public sealed class ContextTriggerServiceTests
         "Please reply to this email.",
         Now,
         TimeSpan.FromMinutes(5));
+
+    private static ContextExecutionInput CreateInput() => ContextExecutionInput.FromText(CreateContext());
+
+    private static ContextExecutionInput CreateImageInput(byte[] bytes)
+    {
+        byte[] digest = System.Security.Cryptography.SHA256.HashData(bytes);
+        ContextSnapshot context = ContextSnapshot.FromImageDigest(
+            ContextSource.RegionCapture,
+            new TargetIdentity("desktop", "00000001"),
+            digest,
+            Now,
+            TimeSpan.FromMinutes(5));
+        return ContextExecutionInput.FromImage(
+            context,
+            new ContextImagePayload(bytes, "image/png", 1, 1));
+    }
 
     private static string SuccessJson(double confidence) => $$"""
         {
