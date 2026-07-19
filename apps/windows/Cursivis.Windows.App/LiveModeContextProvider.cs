@@ -31,11 +31,13 @@ internal sealed class LiveModeContextProvider(
                 capture.Context.Text,
                 capture.Context.Fingerprint.Value,
                 capture.Context.Target.ApplicationId,
-                active?.WindowTitle)
+                active?.WindowTitle,
+                capture.Context)
             : new LiveModeContext(
                 null,
                 null,
                 active?.ProcessName,
-                active?.WindowTitle);
+                active?.WindowTitle,
+                null);
     }
 }

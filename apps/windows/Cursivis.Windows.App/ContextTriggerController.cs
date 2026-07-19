@@ -35,6 +35,7 @@ public sealed class ContextTriggerController : IDisposable
     private readonly ModelIdentifier _model;
     private IReadOnlyList<GuidedOption>? _guidedOptions;
     private ContextFingerprint? _guidedOptionsFingerprint;
+    private bool _externalUndoAvailable;
     private bool _disposed;
 
     public ContextTriggerController(
@@ -83,9 +84,14 @@ public sealed class ContextTriggerController : IDisposable
 
     public TimeSpan LastModelLatency { get; private set; }
 
+    public event Action<string>? BrowserTakeActionRequested;
+
+    public event EventHandler? ExternalUndoRequested;
+
     public void Invoke()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        SetExternalUndoAvailable(false);
         _ = RunSafelyAsync();
     }
 
@@ -93,7 +99,14 @@ public sealed class ContextTriggerController : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(definition);
+        SetExternalUndoAvailable(false);
         _ = RunQuickTaskSafelyAsync(definition);
+    }
+
+    public void SetExternalUndoAvailable(bool available)
+    {
+        _externalUndoAvailable = available;
+        _resultWindow.SetUndoAvailable(available || _undoHistory.Count > 0);
     }
 
     public Task<ContextTriggerExecutionResult> ExecuteQuickTaskFixtureAsync(
@@ -506,7 +519,8 @@ public sealed class ContextTriggerController : IDisposable
 
     private void OnTakeActionRequested(object? sender, EventArgs args)
     {
-        switch (_session.GetCurrent().LatestResult?.SuggestedAction.Type)
+        SmartResult? latest = _session.GetCurrent().LatestResult;
+        switch (latest?.SuggestedAction.Type)
         {
             case SuggestedActionType.Copy:
                 OnCopyRequested(sender, args);
@@ -516,6 +530,13 @@ public sealed class ContextTriggerController : IDisposable
                 break;
             case SuggestedActionType.ReplaceSelection:
                 OnReplaceRequested(sender, args);
+                break;
+            case SuggestedActionType.FillForm:
+            case SuggestedActionType.BrowserPlan:
+                BrowserTakeActionRequested?.Invoke(
+                    string.IsNullOrWhiteSpace(latest.SuggestedAction.Summary)
+                        ? latest.FinalContent
+                        : latest.SuggestedAction.Summary);
                 break;
         }
     }
@@ -970,6 +991,12 @@ public sealed class ContextTriggerController : IDisposable
 
     private async void OnUndoRequested(object? sender, EventArgs args)
     {
+        if (_externalUndoAvailable)
+        {
+            ExternalUndoRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (_undoHistory.Count == 0)
         {
             _resultWindow.SetUndoAvailable(false);

@@ -35,6 +35,7 @@ public enum ActionStepType
     ToggleCheckbox,
     ReplaceSelection,
     InsertText,
+    RunBrowserSearch,
     ClickNavigation,
     OpenExternalUrl,
     StartNavigationGuidance,

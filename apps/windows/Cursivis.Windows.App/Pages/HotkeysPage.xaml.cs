@@ -30,6 +30,8 @@ public sealed partial class HotkeysPage : Page
             HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
         bool cancelActive = runtime.CancelHotkeyStatus.Status is
             HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool takeActionActive = runtime.DirectTakeActionHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
         if (contextActive)
         {
             ContextTriggerRecorder.ActiveChord = "Ctrl+Alt+O";
@@ -42,7 +44,13 @@ public sealed partial class HotkeysPage : Page
             CancelRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
         }
 
-        if (contextActive && cancelActive)
+        if (takeActionActive)
+        {
+            TakeActionRecorder.ActiveChord = "Ctrl+Alt+I";
+            TakeActionRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (contextActive && cancelActive && takeActionActive)
         {
             HotkeysHeader.StatusText = ResourceText.Get("HotkeysActiveStatus");
             HotkeysHeader.StatusDetail = ResourceText.Get("HotkeysActiveStatusDetail");

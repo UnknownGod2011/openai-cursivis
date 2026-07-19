@@ -23,6 +23,7 @@ public sealed partial class OverviewPage : Page
         bool hasCredential = runtime.CredentialManager.HasSavedKey;
         bool hotkeysActive = IsActive(runtime.ContextHotkeyStatus) &&
                              IsActive(runtime.QuickTaskHotkeyStatus) &&
+                             IsActive(runtime.DirectTakeActionHotkeyStatus) &&
                              IsActive(runtime.LiveModeHotkeyStatus) &&
                              IsActive(runtime.CancelHotkeyStatus);
 

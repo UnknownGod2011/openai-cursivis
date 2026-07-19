@@ -24,6 +24,10 @@
       Include="..\..\schemas\guided-options.schema.json"
       Link="Schemas\guided-options.schema.json"
       LogicalName="Cursivis.Schemas.GuidedOptions" />
+    <EmbeddedResource
+      Include="..\..\schemas\browser-action-plan.schema.json"
+      Link="Schemas\browser-action-plan.schema.json"
+      LogicalName="Cursivis.Schemas.BrowserActionPlan" />
   </ItemGroup>
 
 </Project>

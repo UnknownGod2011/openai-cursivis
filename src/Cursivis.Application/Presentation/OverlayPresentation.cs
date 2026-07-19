@@ -100,6 +100,22 @@ public sealed record ResultPanelPresentation(
             message.Trim());
     }
 
+    public static ResultPanelPresentation ActionOutcome(string message, bool canUndo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return new(
+            ResultPanelStatus.Ready,
+            "Take Action",
+            "Verified browser action",
+            message.Trim(),
+            CanUndo: canUndo,
+            CanInsert: false,
+            CanReplace: false,
+            CanCopy: false,
+            CanTakeAction: false,
+            CanRefine: false);
+    }
+
     public ResultPanelPresentation WithNotice(
         ResultPanelStatus status,
         string title,

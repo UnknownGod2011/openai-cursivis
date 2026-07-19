@@ -237,6 +237,7 @@ public static class ActionPolicyEvaluator
 
             ActionStepType.CopyGeneratedText or
             ActionStepType.FocusField or
+            ActionStepType.RunBrowserSearch or
             ActionStepType.Scroll =>
                 (RiskLevel.Low, ConfirmationRequirement.None),
 

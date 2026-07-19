@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Cursivis.Application\Cursivis.Application.csproj" />
     <ProjectReference Include="..\Cursivis.Domain\Cursivis.Domain.csproj" />
   </ItemGroup>
 

@@ -650,4 +650,19 @@
   <data name="ContextResultUndoFailedMessage" xml:space="preserve"><value>The source application could not restore the previous replacement.</value></data>
   <data name="RegionSelectionTitle.Text" xml:space="preserve"><value>Select visual context</value></data>
   <data name="RegionSelectionHint.Text" xml:space="preserve"><value>Drag to analyze an image · Click to copy a color · Esc to cancel</value></data>
+  <data name="OpenAiGetApiKeyLink.Content" xml:space="preserve"><value>Get an OpenAI API key</value></data>
+  <data name="OpenAiGetApiKeyLink.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open the official OpenAI API key page</value></data>
+  <data name="MemoryStorageFailureTitle" xml:space="preserve"><value>Memory could not be updated</value></data>
+  <data name="MemoryStorageFailureMessage" xml:space="preserve"><value>Cursivis could not access the local Live Mode memory file.</value></data>
+  <data name="MemoryDialogTitle" xml:space="preserve"><value>Live Mode memory</value></data>
+  <data name="MemoryEmptyMessage" xml:space="preserve"><value>No memories have been saved. Live Mode stores a fact only when you explicitly ask it to remember.</value></data>
+  <data name="MemoryDeleteText" xml:space="preserve"><value>Delete</value></data>
+  <data name="MemoryClearTitle" xml:space="preserve"><value>Clear Live Mode memory?</value></data>
+  <data name="MemoryClearMessage" xml:space="preserve"><value>This permanently deletes every explicitly saved Live Mode memory.</value></data>
+  <data name="MemoryClearConfirmText" xml:space="preserve"><value>Clear all</value></data>
+  <data name="DialogCloseText" xml:space="preserve"><value>Close</value></data>
+  <data name="DialogCancelText" xml:space="preserve"><value>Cancel</value></data>
+  <data name="MemoryEnabledStatus" xml:space="preserve"><value>Memory enabled</value></data>
+  <data name="MemoryDisabledStatus" xml:space="preserve"><value>Memory disabled</value></data>
+  <data name="MemoryEntryCountFormat" xml:space="preserve"><value>{0} explicitly saved memory entries</value></data>
 </root>

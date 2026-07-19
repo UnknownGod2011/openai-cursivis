@@ -1,5 +1,6 @@
 using Cursivis.Application.OpenAI;
 using Cursivis.Contracts.OpenAI;
+using Cursivis.Domain.Context;
 
 namespace Cursivis.Application.Realtime;
 
@@ -41,9 +42,73 @@ public sealed record LiveModeContext(
     string? SelectedText,
     string? ContextFingerprint,
     string? ActiveApplication,
-    string? ActiveWindowTitle)
+    string? ActiveWindowTitle,
+    ContextSnapshot? CapturedContext = null)
 {
-    public static LiveModeContext Empty { get; } = new(null, null, null, null);
+    public static LiveModeContext Empty { get; } = new(null, null, null, null, null);
+}
+
+public sealed record LiveModeMemoryEntry(
+    Guid Id,
+    string Text,
+    DateTimeOffset CreatedAtUtc);
+
+public sealed record LiveModeMemorySnapshot(
+    bool IsEnabled,
+    IReadOnlyList<LiveModeMemoryEntry> Entries);
+
+public enum LiveModeMemorySaveStatus
+{
+    Saved,
+    Disabled,
+    Rejected,
+}
+
+public sealed record LiveModeMemorySaveResult(
+    LiveModeMemorySaveStatus Status,
+    LiveModeMemoryEntry? Entry,
+    string SafeMessage);
+
+public interface ILiveModeMemoryStore
+{
+    Task<LiveModeMemorySnapshot> GetAsync(CancellationToken cancellationToken = default);
+
+    Task<LiveModeMemorySnapshot> SetEnabledAsync(
+        bool enabled,
+        CancellationToken cancellationToken = default);
+
+    Task<LiveModeMemorySaveResult> RememberExplicitAsync(
+        string text,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task ClearAsync(CancellationToken cancellationToken = default);
+}
+
+public sealed record LiveModeCapabilityResult(
+    bool Succeeded,
+    string SafeMessage,
+    string? Output = null);
+
+public interface ILiveModeCapabilityExecutor
+{
+    Task<LiveModeCapabilityResult> CopyAsync(
+        string text,
+        CancellationToken cancellationToken = default);
+
+    Task<LiveModeCapabilityResult> InsertAsync(
+        LiveModeContext context,
+        string text,
+        CancellationToken cancellationToken = default);
+
+    Task<LiveModeCapabilityResult> AnalyzeScreenAsync(
+        string instruction,
+        CancellationToken cancellationToken = default);
+
+    Task<LiveModeCapabilityResult> TakeBrowserActionAsync(
+        string instruction,
+        CancellationToken cancellationToken = default);
 }
 
 public interface ILiveModeContextProvider

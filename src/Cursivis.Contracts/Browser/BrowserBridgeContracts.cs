@@ -103,11 +103,25 @@ public sealed record BrowserFormField(
     string? CurrentValue,
     IReadOnlyList<string> Options);
 
+public enum BrowserFormControlKind
+{
+    SearchSubmit,
+    Submit,
+    Navigation,
+}
+
+public sealed record BrowserFormControl(
+    string StableTargetId,
+    BrowserFormControlKind Kind,
+    string Label,
+    bool IsHighImpact);
+
 public sealed record BrowserFormSnapshot(
     BrowserTabIdentity Tab,
     string FormId,
     string? AccessibleName,
     IReadOnlyList<BrowserFormField> Fields,
+    IReadOnlyList<BrowserFormControl> Controls,
     string ContextFingerprint);
 
 public enum BrowserCommandKind
@@ -118,6 +132,7 @@ public enum BrowserCommandKind
     Focus,
     Highlight,
     ClickNavigation,
+    SubmitSearch,
     Submit,
 }
 

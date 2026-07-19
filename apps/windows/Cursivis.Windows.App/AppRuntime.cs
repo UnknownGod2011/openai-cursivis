@@ -1,4 +1,5 @@
 using Cursivis.Application.Context;
+using Cursivis.Application.Actions;
 using Cursivis.Application.OpenAI;
 using Cursivis.Application.Presentation;
 using Cursivis.Application.QuickTasks;
@@ -8,7 +9,9 @@ using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
 using Cursivis.Domain.QuickTasks;
+using Cursivis.Contracts.Browser;
 using Cursivis.Infrastructure.OpenAI;
+using Cursivis.Infrastructure.BrowserBridge;
 using Cursivis.Infrastructure.Storage.Persistence;
 using Cursivis.Infrastructure.Storage.Settings;
 using Cursivis.Windows.Platform.ClipboardServices;
@@ -27,6 +30,7 @@ public sealed class AppRuntime : IAsyncDisposable
 {
     public const string ContextTriggerCommand = "context-trigger";
     public const string QuickTaskCommand = "custom-quick-task";
+    public const string DirectTakeActionCommand = "direct-take-action";
     public const string RealtimeLiveModeCommand = "realtime-live-mode";
     public const string CancelCommand = "cancel-emergency-stop";
 
@@ -35,8 +39,11 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly ScopedUnmodifiedHotkeyRegistration _escapeDismissHotkey;
     private readonly ContextOrbWindow _orbWindow;
     private readonly ContextResultWindow _resultWindow;
+    private readonly BrowserBridgeService _browserBridge;
+    private readonly TakeActionController _takeActionController;
     private readonly LiveModeOverlayWindow _liveModeWindow;
     private readonly IRealtimeLiveModeService _liveMode;
+    private readonly ILiveModeMemoryStore _liveModeMemory;
     private readonly NativePointerMonitor _pointerMonitor;
     private readonly IForegroundWindowActivator _foregroundActivator;
     private readonly VersionedJsonSettingsStore<QuickTaskDefinition> _quickTaskStore;
@@ -56,8 +63,11 @@ public sealed class AppRuntime : IAsyncDisposable
         ContextTriggerController contextTrigger,
         ContextOrbWindow orbWindow,
         ContextResultWindow resultWindow,
+        BrowserBridgeService browserBridge,
+        TakeActionController takeActionController,
         LiveModeOverlayWindow liveModeWindow,
         IRealtimeLiveModeService liveMode,
+        ILiveModeMemoryStore liveModeMemory,
         NativePointerMonitor pointerMonitor,
         IForegroundWindowActivator foregroundActivator,
         VersionedJsonSettingsStore<QuickTaskDefinition> quickTaskStore,
@@ -66,6 +76,7 @@ public sealed class AppRuntime : IAsyncDisposable
         nint mainWindowHandle,
         HotkeyUpdateResult contextHotkeyStatus,
         HotkeyUpdateResult quickTaskHotkeyStatus,
+        HotkeyUpdateResult directTakeActionHotkeyStatus,
         HotkeyUpdateResult liveModeHotkeyStatus,
         HotkeyUpdateResult cancelHotkeyStatus)
     {
@@ -77,8 +88,11 @@ public sealed class AppRuntime : IAsyncDisposable
         ContextTrigger = contextTrigger;
         _orbWindow = orbWindow;
         _resultWindow = resultWindow;
+        _browserBridge = browserBridge;
+        _takeActionController = takeActionController;
         _liveModeWindow = liveModeWindow;
         _liveMode = liveMode;
+        _liveModeMemory = liveModeMemory;
         _pointerMonitor = pointerMonitor;
         _foregroundActivator = foregroundActivator;
         _quickTaskStore = quickTaskStore;
@@ -87,6 +101,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _mainWindowHandle = mainWindowHandle;
         ContextHotkeyStatus = contextHotkeyStatus;
         QuickTaskHotkeyStatus = quickTaskHotkeyStatus;
+        DirectTakeActionHotkeyStatus = directTakeActionHotkeyStatus;
         LiveModeHotkeyStatus = liveModeHotkeyStatus;
         CancelHotkeyStatus = cancelHotkeyStatus;
         _messageHook.HotkeyPressed += OnHotkeyPressed;
@@ -111,9 +126,19 @@ public sealed class AppRuntime : IAsyncDisposable
 
     public HotkeyUpdateResult QuickTaskHotkeyStatus { get; }
 
+    public HotkeyUpdateResult DirectTakeActionHotkeyStatus { get; }
+
     public HotkeyUpdateResult LiveModeHotkeyStatus { get; }
 
     public HotkeyUpdateResult CancelHotkeyStatus { get; }
+
+    public BrowserBridgeSnapshot BrowserBridgeStatus => _browserBridge.Snapshot;
+
+    public ILiveModeMemoryStore LiveModeMemory => _liveModeMemory;
+
+    public Task<BrowserFormSnapshot> TestBrowserIntegrationAsync(
+        CancellationToken cancellationToken = default) =>
+        _browserBridge.DiscoverFormAsync(cancellationToken);
 
     public QuickTaskDefinition CurrentQuickTask
     {
@@ -258,11 +283,37 @@ public sealed class AppRuntime : IAsyncDisposable
             orbWindow,
             resultWindow,
             ModelCatalog.Balanced);
+        var browserBridge = new BrowserBridgeService(
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                BrowserExtensionIdentity.StableExtensionId,
+            });
+        await browserBridge.StartAsync();
+        var takeActionService = new BrowserTakeActionService(
+            responsesGateway,
+            browserBridge);
+        var takeActionController = new TakeActionController(
+            browserBridge,
+            takeActionService,
+            capture,
+            inputSettler,
+            controller,
+            orbWindow,
+            resultWindow,
+            ModelCatalog.Balanced);
+        var liveModeMemory = new LiveModeMemoryStore(paths.MemoryFile);
+        var liveModeCapabilities = new WindowsLiveModeCapabilityExecutor(
+            clipboard,
+            insertion,
+            regionCapture,
+            contextService,
+            takeActionController,
+            ModelCatalog.Balanced);
         var liveMode = new RealtimeLiveModeService(
             realtimeGateway,
             new WindowsRealtimeAudioSessionFactory(),
             new LiveModeContextProvider(inputSettler, capture, foreground),
-            new LiveModeToolExecutor(),
+            new LiveModeToolExecutor(liveModeMemory, liveModeCapabilities),
             ModelCatalog.Realtime.Value);
 
         var messageHook = new Win32WindowMessageHook(mainWindowHandle);
@@ -290,6 +341,9 @@ public sealed class AppRuntime : IAsyncDisposable
         HotkeyUpdateResult quickTaskStatus = await hotkeys.RegisterInitialAsync(
             QuickTaskCommand,
             quickTaskChord);
+        HotkeyUpdateResult directTakeActionStatus = await hotkeys.RegisterInitialAsync(
+            DirectTakeActionCommand,
+            new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x49));
         HotkeyUpdateResult liveModeStatus = await hotkeys.RegisterInitialAsync(
             RealtimeLiveModeCommand,
             new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x50));
@@ -306,8 +360,11 @@ public sealed class AppRuntime : IAsyncDisposable
             controller,
             orbWindow,
             resultWindow,
+            browserBridge,
+            takeActionController,
             liveModeWindow,
             liveMode,
+            liveModeMemory,
             pointerMonitor,
             foregroundActivator,
             quickTaskStore,
@@ -316,6 +373,7 @@ public sealed class AppRuntime : IAsyncDisposable
             mainWindowHandle,
             contextStatus,
             quickTaskStatus,
+            directTakeActionStatus,
             liveModeStatus,
             cancelStatus);
     }
@@ -343,7 +401,9 @@ public sealed class AppRuntime : IAsyncDisposable
         _pointerMonitor.PointerPressed -= OnPointerPressed;
         _escapeDismissHotkey.Dispose();
         ContextTrigger.Dispose();
+        _takeActionController.Dispose();
         await _liveMode.DisposeAsync();
+        await _browserBridge.DisposeAsync();
         _messageHook.Dispose();
         _pointerMonitor.Dispose();
         await _hotkeys.DisposeAsync();
@@ -374,6 +434,13 @@ public sealed class AppRuntime : IAsyncDisposable
             return;
         }
 
+        if (_hotkeys.TryGetActive(DirectTakeActionCommand, out ActiveHotkeyRegistration? takeAction) &&
+            takeAction?.RegistrationId == args.RegistrationId)
+        {
+            _takeActionController.InvokeDirect();
+            return;
+        }
+
         if (_hotkeys.TryGetActive(RealtimeLiveModeCommand, out ActiveHotkeyRegistration? liveMode) &&
             liveMode?.RegistrationId == args.RegistrationId)
         {
@@ -385,6 +452,7 @@ public sealed class AppRuntime : IAsyncDisposable
             cancel?.RegistrationId == args.RegistrationId)
         {
             ContextTrigger.Cancel();
+            _takeActionController.Cancel();
             _ = _liveMode.StopAsync();
         }
     }

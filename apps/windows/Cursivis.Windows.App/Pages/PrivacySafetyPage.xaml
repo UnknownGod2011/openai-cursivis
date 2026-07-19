@@ -29,7 +29,7 @@
 
         <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="920" HorizontalAlignment="Stretch" Spacing="20">
-                <controls:SettingsSectionHeader x:Uid="PrivacySectionHeader" />
+                <controls:SettingsSectionHeader x:Name="PrivacyHeader" x:Uid="PrivacySectionHeader" />
 
                 <controls:SettingsCard x:Uid="PrivacyScreenCard" IconGlyph="&#xE7F4;">
                     <controls:SettingsCard.Body>
@@ -54,18 +54,24 @@
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="12">
                             <ToggleSwitch
+                                x:Name="PersonalizationMemoryToggle"
                                 x:Uid="PersonalizationMemoryToggle"
                                 AutomationProperties.AutomationId="PersonalizationMemory"
-                                IsOn="False" />
+                                IsOn="False"
+                                Toggled="OnMemoryToggled" />
                             <TextBlock x:Uid="MemoryBoundedHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Button
+                                    x:Name="ViewMemoryButton"
                                     x:Uid="ViewMemoryButton"
                                     AutomationProperties.AutomationId="ViewMemory"
+                                    Click="OnViewMemoryClicked"
                                     IsEnabled="False" />
                                 <Button
+                                    x:Name="ClearMemoryButton"
                                     x:Uid="ClearMemoryButton"
                                     AutomationProperties.AutomationId="ClearMemory"
+                                    Click="OnClearMemoryClicked"
                                     IsEnabled="False" />
                             </StackPanel>
                         </StackPanel>

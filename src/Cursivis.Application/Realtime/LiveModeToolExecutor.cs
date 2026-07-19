@@ -4,8 +4,8 @@ using Cursivis.Application.OpenAI;
 namespace Cursivis.Application.Realtime;
 
 /// <summary>
-/// Small allowlist for the context tools available in the first Live Mode vertical slice.
-/// Arguments are treated as untrusted and no arbitrary tool name can cross this boundary.
+/// Typed allowlist for Live Mode. Tool arguments are untrusted model output;
+/// every payload is schema-constrained and revalidated before a capability runs.
 /// </summary>
 public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
 {
@@ -17,8 +17,32 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
           "additionalProperties": false
         }
         """;
+    private const string TextSchema = """
+        {
+          "type": "object",
+          "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 20000 } },
+          "required": ["text"],
+          "additionalProperties": false
+        }
+        """;
+    private const string InstructionSchema = """
+        {
+          "type": "object",
+          "properties": { "instruction": { "type": "string", "minLength": 2, "maxLength": 2000 } },
+          "required": ["instruction"],
+          "additionalProperties": false
+        }
+        """;
+    private const string MemoryIdSchema = """
+        {
+          "type": "object",
+          "properties": { "id": { "type": "string", "format": "uuid" } },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+        """;
 
-    private static readonly RealtimeToolDefinition[] ToolDefinitions =
+    private static readonly RealtimeToolDefinition[] BaseDefinitions =
     [
         new(
             "get_selected_text",
@@ -34,9 +58,61 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
             EmptyObjectSchema),
     ];
 
-    public IReadOnlyList<RealtimeToolDefinition> Definitions => ToolDefinitions;
+    private static readonly RealtimeToolDefinition[] MemoryDefinitions =
+    [
+        new(
+            "remember_explicitly",
+            "Save one short fact only after the user explicitly says to remember it. Never save conversation history implicitly.",
+            TextSchema),
+        new(
+            "list_saved_memories",
+            "List the short facts the user explicitly saved for Live Mode.",
+            EmptyObjectSchema),
+        new(
+            "forget_saved_memory",
+            "Delete one explicitly saved Live Mode memory by its id after the user asks to forget it.",
+            MemoryIdSchema),
+    ];
 
-    public ValueTask<LiveModeToolExecutionResult> ExecuteAsync(
+    private static readonly RealtimeToolDefinition[] CapabilityDefinitions =
+    [
+        new(
+            "copy_text",
+            "Copy useful text to the Windows clipboard when the user asks.",
+            TextSchema),
+        new(
+            "insert_text",
+            "Insert text into the application and selection captured when Live Mode began.",
+            TextSchema),
+        new(
+            "analyze_screen_region",
+            "Open the Cursivis region selector and analyze the chosen screen region only after the user explicitly asks for screen analysis.",
+            InstructionSchema),
+        new(
+            "take_browser_action",
+            "Use the shared Cursivis Take Action confirmation and browser-policy workflow for an explicit browser task.",
+            InstructionSchema),
+    ];
+
+    private readonly ILiveModeMemoryStore? _memory;
+    private readonly ILiveModeCapabilityExecutor? _capabilities;
+    private readonly IReadOnlyList<RealtimeToolDefinition> _definitions;
+
+    public LiveModeToolExecutor(
+        ILiveModeMemoryStore? memory = null,
+        ILiveModeCapabilityExecutor? capabilities = null)
+    {
+        _memory = memory;
+        _capabilities = capabilities;
+        _definitions = BaseDefinitions
+            .Concat(memory is null ? [] : MemoryDefinitions)
+            .Concat(capabilities is null ? [] : CapabilityDefinitions)
+            .ToArray();
+    }
+
+    public IReadOnlyList<RealtimeToolDefinition> Definitions => _definitions;
+
+    public async ValueTask<LiveModeToolExecutionResult> ExecuteAsync(
         LiveModeContext context,
         string toolName,
         string untrustedArgumentsJson,
@@ -45,41 +121,164 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
         ArgumentNullException.ThrowIfNull(context);
         ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateEmptyArguments(untrustedArgumentsJson);
 
-        LiveModeToolExecutionResult result = toolName switch
+        switch (toolName)
         {
-            "get_selected_text" => new(JsonSerializer.Serialize(new
-            {
-                available = !string.IsNullOrWhiteSpace(context.SelectedText),
-                text = context.SelectedText,
-                contextFingerprint = context.ContextFingerprint,
-            })),
-            "get_active_application" => new(JsonSerializer.Serialize(new
-            {
-                available = !string.IsNullOrWhiteSpace(context.ActiveApplication),
-                application = context.ActiveApplication,
-                windowTitle = context.ActiveWindowTitle,
-            })),
-            "cancel_current_operation" => new("{\"cancelled\":true}", StopSession: true),
-            _ => throw new InvalidOperationException("The requested Live Mode tool is not allowlisted."),
-        };
+            case "get_selected_text":
+                ValidateEmptyArguments(untrustedArgumentsJson);
+                return Json(new
+                {
+                    available = !string.IsNullOrWhiteSpace(context.SelectedText),
+                    text = context.SelectedText,
+                    contextFingerprint = context.ContextFingerprint,
+                });
+            case "get_active_application":
+                ValidateEmptyArguments(untrustedArgumentsJson);
+                return Json(new
+                {
+                    available = !string.IsNullOrWhiteSpace(context.ActiveApplication),
+                    application = context.ActiveApplication,
+                    windowTitle = context.ActiveWindowTitle,
+                });
+            case "cancel_current_operation":
+                ValidateEmptyArguments(untrustedArgumentsJson);
+                return new("{\"cancelled\":true}", StopSession: true);
+            case "remember_explicitly":
+                EnsureAvailable(_memory, toolName);
+                LiveModeMemorySaveResult saved = await _memory!.RememberExplicitAsync(
+                    ReadStringArgument(untrustedArgumentsJson, "text", 500),
+                    cancellationToken).ConfigureAwait(false);
+                return Json(new
+                {
+                    saved = saved.Status == LiveModeMemorySaveStatus.Saved,
+                    status = saved.Status.ToString(),
+                    id = saved.Entry?.Id,
+                    message = saved.SafeMessage,
+                });
+            case "list_saved_memories":
+                EnsureAvailable(_memory, toolName);
+                ValidateEmptyArguments(untrustedArgumentsJson);
+                LiveModeMemorySnapshot snapshot = await _memory!.GetAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                return Json(new
+                {
+                    enabled = snapshot.IsEnabled,
+                    entries = snapshot.Entries.Select(entry => new
+                    {
+                        id = entry.Id,
+                        text = entry.Text,
+                        createdAtUtc = entry.CreatedAtUtc,
+                    }),
+                });
+            case "forget_saved_memory":
+                EnsureAvailable(_memory, toolName);
+                string rawId = ReadStringArgument(untrustedArgumentsJson, "id", 64);
+                bool removed = Guid.TryParse(rawId, out Guid id) &&
+                    await _memory!.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
+                return Json(new { removed });
+            case "copy_text":
+                EnsureAvailable(_capabilities, toolName);
+                return Capability(await _capabilities!.CopyAsync(
+                    ReadStringArgument(untrustedArgumentsJson, "text", 20_000),
+                    cancellationToken).ConfigureAwait(false));
+            case "insert_text":
+                EnsureAvailable(_capabilities, toolName);
+                return Capability(await _capabilities!.InsertAsync(
+                    context,
+                    ReadStringArgument(untrustedArgumentsJson, "text", 20_000),
+                    cancellationToken).ConfigureAwait(false));
+            case "analyze_screen_region":
+                EnsureAvailable(_capabilities, toolName);
+                return Capability(await _capabilities!.AnalyzeScreenAsync(
+                    ReadStringArgument(untrustedArgumentsJson, "instruction", 2_000),
+                    cancellationToken).ConfigureAwait(false));
+            case "take_browser_action":
+                EnsureAvailable(_capabilities, toolName);
+                return Capability(await _capabilities!.TakeBrowserActionAsync(
+                    ReadStringArgument(untrustedArgumentsJson, "instruction", 2_000),
+                    cancellationToken).ConfigureAwait(false));
+            default:
+                throw new InvalidOperationException("The requested Live Mode tool is not allowlisted.");
+        }
+    }
 
-        return ValueTask.FromResult(result);
+    private static LiveModeToolExecutionResult Capability(LiveModeCapabilityResult result) =>
+        Json(new
+        {
+            succeeded = result.Succeeded,
+            message = result.SafeMessage,
+            output = result.Output,
+        });
+
+    private static LiveModeToolExecutionResult Json<T>(T value) =>
+        new(JsonSerializer.Serialize(value));
+
+    private static string ReadStringArgument(string json, string propertyName, int maximumLength)
+    {
+        using JsonDocument document = ParseObject(json);
+        JsonElement root = document.RootElement;
+        JsonProperty[] properties = root.EnumerateObject().ToArray();
+        if (properties.Length != 1 ||
+            !string.Equals(properties[0].Name, propertyName, StringComparison.Ordinal) ||
+            properties[0].Value.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidOperationException("The Live Mode tool received unsupported arguments.");
+        }
+
+        string value = properties[0].Value.GetString()?.Trim() ?? string.Empty;
+        if (value.Length is < 1 || value.Length > maximumLength)
+        {
+            throw new InvalidOperationException("The Live Mode tool argument was outside its allowed length.");
+        }
+
+        return value;
     }
 
     private static void ValidateEmptyArguments(string json)
+    {
+        using JsonDocument document = ParseObject(json);
+        if (document.RootElement.EnumerateObject().Any())
+        {
+            throw new InvalidOperationException("The Live Mode tool received unsupported arguments.");
+        }
+    }
+
+    private static JsonDocument ParseObject(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
             json = "{}";
         }
 
-        using JsonDocument document = JsonDocument.Parse(json);
-        if (document.RootElement.ValueKind != JsonValueKind.Object ||
-            document.RootElement.EnumerateObject().Any())
+        JsonDocument document;
+        try
         {
+            document = JsonDocument.Parse(json, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 8,
+            });
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException("The Live Mode tool arguments were invalid.", exception);
+        }
+
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            document.Dispose();
             throw new InvalidOperationException("The Live Mode tool received unsupported arguments.");
+        }
+
+        return document;
+    }
+
+    private static void EnsureAvailable(object? dependency, string toolName)
+    {
+        if (dependency is null)
+        {
+            throw new InvalidOperationException($"The {toolName} capability is unavailable in this runtime.");
         }
     }
 }

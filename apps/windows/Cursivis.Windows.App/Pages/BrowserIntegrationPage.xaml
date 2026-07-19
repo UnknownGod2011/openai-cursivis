@@ -34,10 +34,10 @@
                 <controls:SettingsCard x:Uid="BrowserHealthCard" IconGlyph="&#xE774;">
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="10">
-                            <controls:StatusIndicator x:Uid="BrowserExtensionStatus" Glyph="&#xE711;" />
-                            <controls:StatusIndicator x:Uid="BrowserNativeHostStatus" Glyph="&#xE711;" />
-                            <controls:StatusIndicator x:Uid="BrowserPipeStatus" Glyph="&#xE711;" />
-                            <controls:StatusIndicator x:Uid="BrowserHandshakeStatus" Glyph="&#xE946;" />
+                            <controls:StatusIndicator x:Name="ExtensionStatus" x:Uid="BrowserExtensionStatus" Glyph="&#xE711;" />
+                            <controls:StatusIndicator x:Name="NativeHostStatus" x:Uid="BrowserNativeHostStatus" Glyph="&#xE711;" />
+                            <controls:StatusIndicator x:Name="PipeStatus" x:Uid="BrowserPipeStatus" Glyph="&#xE711;" />
+                            <controls:StatusIndicator x:Name="HandshakeStatus" x:Uid="BrowserHandshakeStatus" Glyph="&#xE946;" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
@@ -55,15 +55,17 @@
 
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button
+                        x:Name="TestButton"
                         x:Uid="BrowserTestButton"
                         AutomationProperties.AutomationId="TestBrowserIntegration"
-                        IsEnabled="False" />
+                        Click="OnTestClicked" />
                     <Button
+                        x:Name="RefreshButton"
                         x:Uid="BrowserRepairButton"
                         AutomationProperties.AutomationId="RepairBrowserIntegration"
-                        IsEnabled="False" />
+                        Click="OnRefreshClicked" />
                 </StackPanel>
-                <TextBlock x:Uid="BrowserActionsUnavailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
+                <TextBlock x:Name="ActionStatus" x:Uid="BrowserActionsUnavailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

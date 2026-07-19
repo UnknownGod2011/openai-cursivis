@@ -33,14 +33,21 @@
 
                 <controls:SettingsCard x:Uid="OpenAiKeyCard" IconGlyph="&#xE8D7;">
                     <controls:SettingsCard.Body>
-                        <controls:SecureKeyInput
-                            x:Name="OpenAiKeyInput"
-                            AutomationProperties.AutomationId="OpenAiSecureKeyInput"
-                            HasSavedKey="False"
-                            IsSecureStorageAvailable="False"
-                            SaveRequested="OnSaveRequested"
-                            DeleteRequested="OnDeleteRequested"
-                            TestRequested="OnTestRequested" />
+                        <StackPanel Spacing="8">
+                            <controls:SecureKeyInput
+                                x:Name="OpenAiKeyInput"
+                                AutomationProperties.AutomationId="OpenAiSecureKeyInput"
+                                HasSavedKey="False"
+                                IsSecureStorageAvailable="False"
+                                SaveRequested="OnSaveRequested"
+                                DeleteRequested="OnDeleteRequested"
+                                TestRequested="OnTestRequested" />
+                            <HyperlinkButton
+                                x:Uid="OpenAiGetApiKeyLink"
+                                AutomationProperties.AutomationId="OpenAiGetApiKeyLink"
+                                HorizontalAlignment="Left"
+                                NavigateUri="https://platform.openai.com/api-keys" />
+                        </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
 

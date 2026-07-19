@@ -50,6 +50,7 @@
     <ProjectReference Include="..\..\..\src\Cursivis.Application\Cursivis.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Cursivis.Domain\Cursivis.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Cursivis.Infrastructure.OpenAI\Cursivis.Infrastructure.OpenAI.csproj" />
+    <ProjectReference Include="..\..\..\src\Cursivis.Infrastructure.BrowserBridge\Cursivis.Infrastructure.BrowserBridge.csproj" />
     <ProjectReference Include="..\..\..\src\Cursivis.Infrastructure.Storage\Cursivis.Infrastructure.Storage.csproj" />
     <ProjectReference Include="..\Cursivis.Windows.Platform\Cursivis.Windows.Platform.csproj" />
   </ItemGroup>

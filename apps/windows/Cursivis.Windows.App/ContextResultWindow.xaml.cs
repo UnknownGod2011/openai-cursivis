@@ -173,6 +173,14 @@ public sealed partial class ContextResultWindow : Window
         ShowWithoutActivation();
     }
 
+    public void ShowActionOutcome(string message, bool canUndo)
+    {
+        _detectedColor = null;
+        _presentation = ResultPanelPresentation.ActionOutcome(message, canUndo);
+        ApplyPresentation(_presentation);
+        ShowWithoutActivation();
+    }
+
     public void ShowNotice(string title, string message, InfoBarSeverity severity)
     {
         _noticeTimer.Stop();

@@ -4,6 +4,7 @@
 
   const SUPPORTED_FIELDS = new Set(["text", "textarea", "email", "number", "radio", "checkbox", "select", "date"]);
   const SENSITIVE_PATTERN = /(password|passcode|credit|card|cvv|cvc|iban|routing|account.?number|social.?security|ssn|passport|government.?id|aadhaar|otp|one.?time)/i;
+  let lastDiscoveredForm = null;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.source !== "cursivis-extension") return false;
@@ -49,20 +50,33 @@
     const form = document.activeElement?.closest("form") ?? visibleElements("form")[0];
     if (!form) throw new Error("No visible form was found in the active tab.");
     const fields = fieldElements(form).slice(0, 300).map((element, index) => describeField(element, index));
-    return {
+    const controls = actionElements(form).slice(0, 50).map((element, index) => describeControl(element, index));
+    const snapshot = {
       tab: tabIdentity(),
       formId: stableId(form, 0),
       accessibleName: cleanText(form.getAttribute("aria-label") || form.querySelector("legend,h1,h2,h3")?.textContent),
       fields,
-      contextFingerprint: fingerprint(`${location.origin}|${location.pathname}|${fields.map(field => `${field.stableTargetId}:${field.kind}`).join("|")}`)
+      controls,
+      contextFingerprint: fingerprint(`${location.origin}|${location.pathname}|${fields.map(field => `${field.stableTargetId}:${field.kind}:${field.currentValue ?? ""}`).join("|")}|${controls.map(control => `${control.stableTargetId}:${control.kind}`).join("|")}`)
     };
+    lastDiscoveredForm = {
+      formId: snapshot.formId,
+      contextFingerprint: snapshot.contextFingerprint,
+      urlOrigin: location.origin
+    };
+    return snapshot;
   }
 
   function executeCommand(command) {
     if (command?.tab && !sameTab(command.tab)) return failed(command?.stepId, "stale_tab", "The active tab changed before the action ran.");
+    if (!lastDiscoveredForm ||
+        lastDiscoveredForm.urlOrigin !== location.origin ||
+        command.contextFingerprint !== lastDiscoveredForm.contextFingerprint) {
+      return failed(command?.stepId, "stale_form", "The visible form changed before the action ran.");
+    }
     const fields = fieldElements(document);
     const element = fields.find((candidate, index) => stableId(candidate, index) === command.stableTargetId)
-      ?? visibleElements("button,a,[role='button'],input[type='submit']").find((candidate, index) => stableId(candidate, index) === command.stableTargetId);
+      ?? actionElements(document).find((candidate, index) => stableId(candidate, index) === command.stableTargetId);
     if (!element) return failed(command?.stepId, "target_missing", "The requested page element is no longer available.");
     if (isSensitive(element)) return failed(command.stepId, "sensitive_field", "Cursivis will not fill this sensitive field.");
 
@@ -93,6 +107,11 @@
         if (!(element instanceof HTMLAnchorElement || element instanceof HTMLButtonElement)) return failed(command.stepId, "unsafe_click_target", "Only visible navigation links or buttons can be clicked.");
         element.click();
         return verify(command.stepId, true, null);
+      case "submit_search":
+        if (!(element instanceof HTMLButtonElement || (element instanceof HTMLInputElement && element.type === "submit"))) return failed(command.stepId, "unsafe_search_target", "The target is not an explicit search control.");
+        if (!isSearchForm(element.form ?? element.closest("form"))) return failed(command.stepId, "unsafe_search_target", "The visible form is not an ordinary search form.");
+        element.click();
+        return verify(command.stepId, true, null);
       case "submit":
         if (!command.confirmationId || command.confirmationId.length < 20) return failed(command.stepId, "fresh_confirmation_required", "Submitting requires fresh confirmation in Cursivis.");
         if (!(element instanceof HTMLButtonElement || (element instanceof HTMLInputElement && element.type === "submit"))) return failed(command.stepId, "unsafe_submit_target", "The target is not an explicit submit control.");
@@ -121,9 +140,35 @@
     };
   }
 
+  function describeControl(element, index) {
+    const isSubmit = element.matches("button[type='submit'],input[type='submit']");
+    const kind = isSubmit
+      ? (isSearchForm(element.form ?? element.closest("form")) ? "search_submit" : "submit")
+      : "navigation";
+    const label = labelFor(element);
+    return {
+      stableTargetId: stableId(element, index),
+      kind,
+      label,
+      isHighImpact: kind === "submit"
+    };
+  }
+
+  function isSearchForm(form) {
+    if (!(form instanceof HTMLFormElement)) return false;
+    const action = String(form.getAttribute("action") || "").toLowerCase();
+    return form.getAttribute("role") === "search" ||
+      action.includes("/search") ||
+      Boolean(form.querySelector("input[type='search'],input[name='q'],textarea[name='q']"));
+  }
+
   function fieldElements(root) {
     return visibleElements("input:not([type='hidden']):not([type='password']),textarea,select", root)
       .filter(element => SUPPORTED_FIELDS.has(fieldKind(element)));
+  }
+
+  function actionElements(root) {
+    return visibleElements("button[type='submit'],input[type='submit'],a[href]", root);
   }
 
   function visibleElements(selector, root = document) {

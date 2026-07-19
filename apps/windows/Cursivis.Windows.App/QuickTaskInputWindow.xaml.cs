@@ -23,13 +23,18 @@ public sealed partial class QuickTaskInputWindow : Window
     private bool _awaitingBorderlessFrame;
     private int _borderlessFrames;
 
-    public QuickTaskInputWindow(string taskName, ElementTheme theme = ElementTheme.Default)
+    public QuickTaskInputWindow(
+        string taskName,
+        ElementTheme theme = ElementTheme.Default,
+        string? placeholder = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(taskName);
         InitializeComponent();
         OverlayRoot.RequestedTheme = theme;
         Title = $"Cursivis {taskName.Trim()} input";
-        PlaceholderText.Text = $"{taskName.Trim()}…";
+        PlaceholderText.Text = string.IsNullOrWhiteSpace(placeholder)
+            ? $"{taskName.Trim()}…"
+            : placeholder.Trim();
         _transparentBackdrop = new TransparentWindowBackdrop(this);
         var presenter = (OverlappedPresenter)AppWindow.Presenter;
         presenter.IsMaximizable = false;
