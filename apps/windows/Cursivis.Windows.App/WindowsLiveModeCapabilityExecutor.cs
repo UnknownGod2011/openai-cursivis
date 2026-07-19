@@ -11,6 +11,8 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
     IRegionContextCaptureService regionCapture,
     IContextTriggerService contextService,
     TakeActionController takeAction,
+    INavigationGuidanceService navigationGuidance,
+    NavigationGuidanceConfiguration navigationConfiguration,
     ModelIdentifier model) : ILiveModeCapabilityExecutor
 {
     private readonly IResultClipboardService _clipboard = clipboard
@@ -23,6 +25,10 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
         ?? throw new ArgumentNullException(nameof(contextService));
     private readonly TakeActionController _takeAction = takeAction
         ?? throw new ArgumentNullException(nameof(takeAction));
+    private readonly INavigationGuidanceService _navigationGuidance = navigationGuidance
+        ?? throw new ArgumentNullException(nameof(navigationGuidance));
+    private readonly NavigationGuidanceConfiguration _navigationConfiguration = navigationConfiguration
+        ?? throw new ArgumentNullException(nameof(navigationConfiguration));
     private readonly ModelIdentifier _model = model;
 
     public async Task<LiveModeCapabilityResult> CopyAsync(
@@ -102,5 +108,24 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
     {
         string output = await _takeAction.ExecuteFromLiveAsync(instruction, cancellationToken);
         return new(true, "The shared browser action workflow completed.", output);
+    }
+
+    public async Task<LiveModeCapabilityResult> NavigateAsync(
+        string instruction,
+        CancellationToken cancellationToken = default)
+    {
+        NavigationGuidanceConfigurationSnapshot configuration = _navigationConfiguration.Snapshot;
+        if (!configuration.Enabled)
+        {
+            return new(
+                false,
+                "Navigation Guidance capture is disabled. Enable it in Settings > Privacy & Safety, then ask again.");
+        }
+
+        NavigationGuidanceSessionResult result = await _navigationGuidance.GuideAsync(
+            instruction,
+            configuration.CaptureScope,
+            cancellationToken);
+        return new(result.Succeeded, result.SafeMessage);
     }
 }

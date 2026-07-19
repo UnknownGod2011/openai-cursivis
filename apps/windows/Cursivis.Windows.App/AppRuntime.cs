@@ -57,6 +57,8 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly VersionedJsonSettingsStore<QuickTaskDefinition> _quickTaskStore;
     private readonly VersionedJsonSettingsStore<ApplicationSettings> _settingsStore;
     private readonly WindowsStartupRegistration _startupRegistration;
+    private readonly NavigationGuidanceConfiguration _navigationGuidanceConfiguration;
+    private readonly WindowsNavigationGuidanceInteraction _navigationGuidanceInteraction;
     private readonly IQuickTaskFinalizationService _quickTaskFinalizer;
     private readonly object _quickTaskGate = new();
     private readonly object _settingsGate = new();
@@ -86,6 +88,8 @@ public sealed class AppRuntime : IAsyncDisposable
         VersionedJsonSettingsStore<QuickTaskDefinition> quickTaskStore,
         VersionedJsonSettingsStore<ApplicationSettings> settingsStore,
         WindowsStartupRegistration startupRegistration,
+        NavigationGuidanceConfiguration navigationGuidanceConfiguration,
+        WindowsNavigationGuidanceInteraction navigationGuidanceInteraction,
         IQuickTaskFinalizationService quickTaskFinalizer,
         QuickTaskDefinition currentQuickTask,
         ApplicationSettings currentSettings,
@@ -116,6 +120,8 @@ public sealed class AppRuntime : IAsyncDisposable
         _quickTaskStore = quickTaskStore;
         _settingsStore = settingsStore;
         _startupRegistration = startupRegistration;
+        _navigationGuidanceConfiguration = navigationGuidanceConfiguration;
+        _navigationGuidanceInteraction = navigationGuidanceInteraction;
         _quickTaskFinalizer = quickTaskFinalizer;
         _currentQuickTask = currentQuickTask;
         _currentSettings = currentSettings;
@@ -258,6 +264,9 @@ public sealed class AppRuntime : IAsyncDisposable
             }
             ContextTrigger.SetDefaultMode(next.Interaction.DefaultMode);
             ContextTrigger.SetCloseResultsAfterInsert(next.Interaction.CloseResultsAfterInsert);
+            _navigationGuidanceConfiguration.Update(
+                next.Privacy.AllowNavigationGuidanceCapture,
+                next.Interaction.CaptureScope);
 
             return next;
         }
@@ -493,9 +502,10 @@ public sealed class AppRuntime : IAsyncDisposable
             new WindowsProtectedClipboardSelectionReader(),
         ];
         ISelectionCaptureService capture = new LayeredSelectionCaptureService(foreground, readers);
+        var screenCapture = new WindowsScreenCaptureService();
         IRegionContextCaptureService regionCapture = new RegionContextCaptureService(
             foreground,
-            new WindowsScreenCaptureService());
+            screenCapture);
         ISelectionReplacementService replacement = new WindowsSelectionReplacementService(foreground, readers);
         ITextInsertionService insertion = new WindowsTextInsertionService(foreground);
         ITextUndoService undo = new WindowsTextUndoService(foreground);
@@ -538,12 +548,23 @@ public sealed class AppRuntime : IAsyncDisposable
             resultWindow,
             currentSettings.Models.ResponsesModel);
         var liveModeMemory = new LiveModeMemoryStore(paths.MemoryFile);
+        var navigationGuidanceInteraction = new WindowsNavigationGuidanceInteraction(orbWindow);
+        var navigationGuidanceConfiguration = new NavigationGuidanceConfiguration(
+            currentSettings.Privacy.AllowNavigationGuidanceCapture,
+            currentSettings.Interaction.CaptureScope);
+        var navigationGuidance = new NavigationGuidanceService(
+            responsesGateway,
+            new WindowsNavigationGuidanceCaptureService(foreground, screenCapture),
+            navigationGuidanceInteraction,
+            currentSettings.Models.ResponsesModel);
         var liveModeCapabilities = new WindowsLiveModeCapabilityExecutor(
             clipboard,
             insertion,
             regionCapture,
             contextService,
             takeActionController,
+            navigationGuidance,
+            navigationGuidanceConfiguration,
             currentSettings.Models.ResponsesModel);
         var liveMode = new RealtimeLiveModeService(
             realtimeGateway,
@@ -651,6 +672,8 @@ public sealed class AppRuntime : IAsyncDisposable
             quickTaskStore,
             settingsStore,
             startupRegistration,
+            navigationGuidanceConfiguration,
+            navigationGuidanceInteraction,
             quickTaskFinalizer,
             quickTaskLoad.Value,
             currentSettings,
@@ -698,6 +721,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _messageHook.Dispose();
         _pointerMonitor.Dispose();
         await _hotkeys.DisposeAsync();
+        _navigationGuidanceInteraction.Dispose();
         _settingsWriteGate.Dispose();
         _resultWindow.Close();
         _liveModeWindow.Close();

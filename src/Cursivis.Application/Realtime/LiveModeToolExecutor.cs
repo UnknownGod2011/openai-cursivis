@@ -33,6 +33,14 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
           "additionalProperties": false
         }
         """;
+    private const string NavigationInstructionSchema = """
+        {
+          "type": "object",
+          "properties": { "instruction": { "type": "string", "minLength": 2, "maxLength": 1000 } },
+          "required": ["instruction"],
+          "additionalProperties": false
+        }
+        """;
     private const string MemoryIdSchema = """
         {
           "type": "object",
@@ -92,6 +100,10 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
             "take_browser_action",
             "Use the shared Cursivis Take Action confirmation and browser-policy workflow for an explicit browser task.",
             InstructionSchema),
+        new(
+            "start_navigation_guidance",
+            "Start visible step-by-step Navigation Guidance only after the user explicitly asks for help navigating the current Windows application.",
+            NavigationInstructionSchema),
     ];
 
     private readonly ILiveModeMemoryStore? _memory;
@@ -196,6 +208,11 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
                 EnsureAvailable(_capabilities, toolName);
                 return Capability(await _capabilities!.TakeBrowserActionAsync(
                     ReadStringArgument(untrustedArgumentsJson, "instruction", 2_000),
+                    cancellationToken).ConfigureAwait(false));
+            case "start_navigation_guidance":
+                EnsureAvailable(_capabilities, toolName);
+                return Capability(await _capabilities!.NavigateAsync(
+                    ReadStringArgument(untrustedArgumentsJson, "instruction", 1_000),
                     cancellationToken).ConfigureAwait(false));
             default:
                 throw new InvalidOperationException("The requested Live Mode tool is not allowlisted.");

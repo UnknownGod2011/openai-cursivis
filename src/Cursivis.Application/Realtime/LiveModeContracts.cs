@@ -109,6 +109,10 @@ public interface ILiveModeCapabilityExecutor
     Task<LiveModeCapabilityResult> TakeBrowserActionAsync(
         string instruction,
         CancellationToken cancellationToken = default);
+
+    Task<LiveModeCapabilityResult> NavigateAsync(
+        string instruction,
+        CancellationToken cancellationToken = default);
 }
 
 public interface ILiveModeContextProvider

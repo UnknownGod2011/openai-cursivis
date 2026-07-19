@@ -52,6 +52,7 @@ public sealed class LiveModeMemoryTests
 
         Assert.Contains(executor.Definitions, definition => definition.Name == "remember_explicitly");
         Assert.Contains(executor.Definitions, definition => definition.Name == "analyze_screen_region");
+        Assert.Contains(executor.Definitions, definition => definition.Name == "start_navigation_guidance");
         Assert.Empty((await memory.GetAsync()).Entries);
 
         LiveModeToolExecutionResult remembered = await executor.ExecuteAsync(
@@ -68,6 +69,12 @@ public sealed class LiveModeMemoryTests
             "{\"text\":\"Useful output\"}");
         Assert.Contains("Useful output", capabilities.Copied);
         Assert.Contains("succeeded", copied.Json);
+
+        LiveModeToolExecutionResult navigated = await executor.ExecuteAsync(
+            LiveModeContext.Empty,
+            "start_navigation_guidance",
+            "{\"instruction\":\"Open the accessibility settings\"}");
+        Assert.Contains("navigation", navigated.Json, StringComparison.OrdinalIgnoreCase);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await executor.ExecuteAsync(
@@ -124,5 +131,8 @@ public sealed class LiveModeMemoryTests
 
         public Task<LiveModeCapabilityResult> TakeBrowserActionAsync(string instruction, CancellationToken cancellationToken = default) =>
             Task.FromResult(new LiveModeCapabilityResult(true, "completed"));
+
+        public Task<LiveModeCapabilityResult> NavigateAsync(string instruction, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new LiveModeCapabilityResult(true, "navigation completed"));
     }
 }
