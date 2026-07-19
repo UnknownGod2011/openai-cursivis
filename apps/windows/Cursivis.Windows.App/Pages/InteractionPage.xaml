@@ -101,16 +101,17 @@
                             x:Name="LaunchAtSignInToggle"
                             x:Uid="LaunchAtSignInToggle"
                             AutomationProperties.AutomationId="LaunchAtSignIn"
-                            IsEnabled="False" />
+                            Toggled="OnSettingChanged" />
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
 
                 <controls:SaveStateBar
                     x:Name="SaveState"
                     x:Uid="InteractionSaveState"
-                    CanSave="False"
+                    CanSave="True"
                     DiscardRequested="OnDiscardRequested"
-                    IsDirty="False" />
+                    IsDirty="False"
+                    SaveRequested="OnSaveRequested" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -56,12 +56,12 @@
                 <controls:SettingsCard x:Uid="DiagnosticsHealthCard" IconGlyph="&#xE9D9;">
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="10">
-                            <controls:StatusIndicator x:Uid="DiagnosticsOpenAiStatus" Glyph="&#xE946;" />
-                            <controls:StatusIndicator x:Uid="DiagnosticsStorageStatus" Glyph="&#xE946;" />
-                            <controls:StatusIndicator x:Uid="DiagnosticsHotkeysStatus" Glyph="&#xE7E6;" />
-                            <controls:StatusIndicator x:Uid="DiagnosticsBrowserStatus" Glyph="&#xE711;" />
-                            <controls:StatusIndicator x:Uid="DiagnosticsMicrophoneStatus" Glyph="&#xE720;" />
-                            <controls:StatusIndicator x:Uid="DiagnosticsCaptureStatus" Glyph="&#xE722;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsOpenAiStatus" x:Uid="DiagnosticsOpenAiStatus" Glyph="&#xE946;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsStorageStatus" x:Uid="DiagnosticsStorageStatus" Glyph="&#xE946;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsHotkeysStatus" x:Uid="DiagnosticsHotkeysStatus" Glyph="&#xE7E6;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsBrowserStatus" x:Uid="DiagnosticsBrowserStatus" Glyph="&#xE711;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsMicrophoneStatus" x:Uid="DiagnosticsMicrophoneStatus" Glyph="&#xE720;" />
+                            <controls:StatusIndicator x:Name="DiagnosticsCaptureStatus" x:Uid="DiagnosticsCaptureStatus" Glyph="&#xE722;" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
@@ -90,13 +90,15 @@
                                     Click="OnCopyClicked"
                                     Style="{StaticResource AccentButtonStyle}" />
                                 <Button
+                                    x:Name="ExportDiagnosticsButton"
                                     x:Uid="ExportDiagnosticsButton"
                                     AutomationProperties.AutomationId="ExportDiagnostics"
-                                    IsEnabled="False" />
+                                    Click="OnExportClicked" />
                                 <Button
+                                    x:Name="OpenLogsButton"
                                     x:Uid="OpenLogsButton"
                                     AutomationProperties.AutomationId="OpenLogs"
-                                    IsEnabled="False" />
+                                    Click="OnOpenLogsClicked" />
                             </StackPanel>
                             <TextBlock x:Uid="DiagnosticsUnavailableActionsHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                         </StackPanel>

@@ -1,4 +1,5 @@
 using Cursivis.Application.Realtime;
+using Cursivis.Domain.Settings;
 using Cursivis.Windows.App.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -9,6 +10,7 @@ namespace Cursivis.Windows.App.Pages;
 public sealed partial class PrivacySafetyPage : Page
 {
     private bool _loadingMemory;
+    private bool _loadingSettings;
 
     public PrivacySafetyPage()
     {
@@ -16,8 +18,11 @@ public sealed partial class PrivacySafetyPage : Page
         Loaded += OnLoaded;
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs args) =>
+    private async void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        ApplyPrivacySettings();
         await RefreshMemoryStateAsync();
+    }
 
     private async void OnMemoryToggled(object sender, RoutedEventArgs args)
     {
@@ -28,8 +33,31 @@ public sealed partial class PrivacySafetyPage : Page
 
         try
         {
-            LiveModeMemorySnapshot snapshot = await runtime.LiveModeMemory.SetEnabledAsync(
-                PersonalizationMemoryToggle.IsOn);
+            bool requested = PersonalizationMemoryToggle.IsOn;
+            bool previous = (await runtime.LiveModeMemory.GetAsync()).IsEnabled;
+            await runtime.UpdateApplicationSettingsAsync(settings => settings with
+            {
+                Privacy = settings.Privacy with
+                {
+                    PersonalizationMemoryEnabled = requested,
+                },
+            });
+            LiveModeMemorySnapshot snapshot;
+            try
+            {
+                snapshot = await runtime.LiveModeMemory.SetEnabledAsync(requested);
+            }
+            catch
+            {
+                await runtime.UpdateApplicationSettingsAsync(settings => settings with
+                {
+                    Privacy = settings.Privacy with
+                    {
+                        PersonalizationMemoryEnabled = previous,
+                    },
+                });
+                throw;
+            }
             ApplyMemoryState(snapshot);
         }
         catch (IOException)
@@ -45,6 +73,69 @@ public sealed partial class PrivacySafetyPage : Page
                 ResourceText.Get("MemoryStorageFailureTitle"),
                 ResourceText.Get("MemoryStorageFailureMessage"));
             await RefreshMemoryStateAsync();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+        {
+            await ShowMessageAsync(
+                ResourceText.Get("MemoryStorageFailureTitle"),
+                ResourceText.Get("MemoryStorageFailureMessage"));
+            await RefreshMemoryStateAsync();
+        }
+    }
+
+    private async void OnPrivacySettingChanged(object sender, RoutedEventArgs args)
+    {
+        if (_loadingSettings || App.CurrentRuntime is not { } runtime)
+        {
+            return;
+        }
+
+        try
+        {
+            await runtime.UpdateApplicationSettingsAsync(settings => settings with
+            {
+                Interaction = settings.Interaction with
+                {
+                    CaptureScope = PrivacyDisplayOption.IsChecked == true
+                        ? CaptureScope.FullDisplay
+                        : CaptureScope.ActiveWindow,
+                },
+                Privacy = settings.Privacy with
+                {
+                    AllowNavigationGuidanceCapture = AllowNavigationGuidanceToggle.IsOn,
+                },
+            });
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            await ShowMessageAsync(
+                ResourceText.Get("PrivacySettingsSaveFailedTitle"),
+                ResourceText.Get("PrivacySettingsSaveFailedMessage"));
+            ApplyPrivacySettings();
+        }
+    }
+
+    private void ApplyPrivacySettings()
+    {
+        if (App.CurrentRuntime is not { } runtime)
+        {
+            return;
+        }
+
+        _loadingSettings = true;
+        try
+        {
+            PrivacyActiveWindowOption.IsChecked =
+                runtime.CurrentSettings.Interaction.CaptureScope == CaptureScope.ActiveWindow;
+            PrivacyDisplayOption.IsChecked =
+                runtime.CurrentSettings.Interaction.CaptureScope == CaptureScope.FullDisplay;
+            AllowNavigationGuidanceToggle.IsOn =
+                runtime.CurrentSettings.Privacy.AllowNavigationGuidanceCapture;
+        }
+        finally
+        {
+            _loadingSettings = false;
         }
     }
 

@@ -137,6 +137,21 @@ public sealed partial class ContextOrbWindow : Window
 
     public void SetRequestedTheme(ElementTheme theme) => OverlayRoot.RequestedTheme = theme;
 
+    public void ResetRememberedPlacement()
+    {
+        _placementStore.Reset();
+        _placementPoint = null;
+        _userPlaced = false;
+        if (_overlay.IsVisible)
+        {
+            OverlayRectangle bounds = NativeWindowPositioner.GetNearCursorPlacement(
+                _overlay.WindowHandle,
+                LogicalWidth,
+                LogicalHeight);
+            _overlay.Show(bounds, topmost: true, noActivate: true, CornerRadius);
+        }
+    }
+
     public void Hide()
     {
         SetGuidedPanelVisible(false);

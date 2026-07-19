@@ -12,5 +12,8 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Frame x:Name="RootFrame" IsNavigationStackEnabled="False" />
+    <Frame
+        x:Name="RootFrame"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+        IsNavigationStackEnabled="False" />
 </Window>

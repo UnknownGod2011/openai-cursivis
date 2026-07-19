@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Cursivis.Domain.Interaction;
+using Cursivis.Domain.Settings;
 using Cursivis.Infrastructure.Storage.Persistence;
 using Cursivis.Infrastructure.Storage.Settings;
 using Cursivis.IntegrationTests.TestSupport;
@@ -29,6 +31,41 @@ public sealed class SettingsPersistenceTests
 
         var root = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
         Assert.Equal(2, root["schemaVersion"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task ApplicationSettings_RoundTripsValidatedProductionDocument()
+    {
+        using var temporary = new TemporaryDirectory();
+        string path = System.IO.Path.Combine(temporary.Path, "application-settings.json");
+        var store = new VersionedJsonSettingsStore<ApplicationSettings>(
+            new VersionedJsonSettingsStoreOptions(
+                path,
+                ApplicationSettings.CurrentSchemaVersion),
+            new ApplicationSettingsJsonCodec());
+        ApplicationSettings changed = ApplicationSettings.CreateDefault() with
+        {
+            Interaction = InteractionSettings.CreateDefault() with
+            {
+                DefaultMode = InteractionMode.Guided,
+                CaptureScope = CaptureScope.FullDisplay,
+                CloseResultsAfterInsert = true,
+            },
+            Startup = StartupSystemSettings.CreateDefault() with
+            {
+                LaunchAtSignIn = true,
+            },
+        };
+
+        await store.SaveAsync(changed);
+        SettingsLoadResult<ApplicationSettings> loaded = await store.LoadAsync();
+
+        Assert.Equal(SettingsLoadStatus.Loaded, loaded.Status);
+        Assert.Equal(InteractionMode.Guided, loaded.Value.Interaction.DefaultMode);
+        Assert.Equal(CaptureScope.FullDisplay, loaded.Value.Interaction.CaptureScope);
+        Assert.True(loaded.Value.Interaction.CloseResultsAfterInsert);
+        Assert.True(loaded.Value.Startup.LaunchAtSignIn);
+        Assert.Equal("Ctrl+Alt+S", loaded.Value.Hotkeys[HotkeyCommand.OpenSettings].Canonical);
     }
 
     [Fact]

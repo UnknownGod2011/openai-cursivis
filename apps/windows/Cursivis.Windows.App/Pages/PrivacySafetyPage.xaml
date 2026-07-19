@@ -38,14 +38,23 @@
                             <TextBlock x:Uid="NavigationCaptureExplanation" TextWrapping="Wrap" />
                             <TextBlock x:Uid="CaptureStopExplanation" Style="{StaticResource CaptionSecondaryTextStyle}" />
                             <RadioButton
+                                x:Name="PrivacyActiveWindowOption"
                                 x:Uid="PrivacyActiveWindowOption"
                                 AutomationProperties.AutomationId="PrivacyCaptureActiveWindow"
+                                Checked="OnPrivacySettingChanged"
                                 GroupName="PrivacyCaptureScope"
                                 IsChecked="True" />
                             <RadioButton
+                                x:Name="PrivacyDisplayOption"
                                 x:Uid="PrivacyDisplayOption"
                                 AutomationProperties.AutomationId="PrivacyCaptureDisplay"
+                                Checked="OnPrivacySettingChanged"
                                 GroupName="PrivacyCaptureScope" />
+                            <ToggleSwitch
+                                x:Name="AllowNavigationGuidanceToggle"
+                                x:Uid="AllowNavigationGuidanceToggle"
+                                AutomationProperties.AutomationId="AllowNavigationGuidanceCapture"
+                                Toggled="OnPrivacySettingChanged" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
@@ -82,8 +91,10 @@
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="12">
                             <ToggleSwitch
+                                x:Name="ProtectedClipboardToggle"
                                 x:Uid="ProtectedClipboardToggle"
                                 AutomationProperties.AutomationId="ProtectedClipboardFallback"
+                                IsEnabled="False"
                                 IsOn="True" />
                             <ToggleSwitch
                                 x:Uid="RedactedLoggingToggle"

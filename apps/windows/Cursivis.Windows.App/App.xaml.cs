@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Cursivis.Windows.Platform.Instance;
+using Microsoft.UI.Dispatching;
 
 using Microsoft.UI.Xaml;
 
@@ -55,19 +56,23 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window = mainWindow;
             _window.Closed += OnMainWindowClosed;
             nint windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
-            _runtime = await AppRuntime.CreateAsync(windowHandle);
-            mainWindow.RefreshRuntimeStatus();
+            AppRuntime runtime = await AppRuntime.CreateAsync(windowHandle);
+            await EnqueueAsync(mainWindow.DispatcherQueue, () =>
+            {
+                _runtime = runtime;
+                mainWindow.RefreshRuntimeStatus();
 
-            bool backgroundStartup = Environment.GetCommandLineArgs().Any(
-                argument => string.Equals(argument, "--background", StringComparison.OrdinalIgnoreCase));
-            if (backgroundStartup && _runtime.CredentialManager.HasSavedKey)
-            {
-                mainWindow.HideForBackgroundStartup();
-            }
-            else
-            {
-                mainWindow.ShowForActivation();
-            }
+                bool backgroundStartup = Environment.GetCommandLineArgs().Any(
+                    argument => string.Equals(argument, "--background", StringComparison.OrdinalIgnoreCase));
+                if (backgroundStartup && runtime.CredentialManager.HasSavedKey)
+                {
+                    mainWindow.HideForBackgroundStartup();
+                }
+                else
+                {
+                    mainWindow.ShowForActivation();
+                }
+            });
 
             _activationLifetime = new CancellationTokenSource();
             _activationListener = _activationHandoff.RunAsync(
@@ -78,7 +83,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             File.WriteAllText(
                 Path.Combine(AppContext.BaseDirectory, "startup-error.txt"),
-                $"{exception.GetType().Name}: {exception.Message}");
+                exception.ToString());
             throw;
         }
     }
@@ -123,5 +128,33 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    private static Task EnqueueAsync(DispatcherQueue dispatcher, Action action)
+    {
+        if (dispatcher.HasThreadAccess)
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcher.TryEnqueue(() =>
+            {
+                try
+                {
+                    action();
+                    completion.TrySetResult();
+                }
+                catch (Exception exception)
+                {
+                    completion.TrySetException(exception);
+                }
+            }))
+        {
+            completion.TrySetException(new InvalidOperationException("The Settings dispatcher is unavailable."));
+        }
+
+        return completion.Task;
     }
 }

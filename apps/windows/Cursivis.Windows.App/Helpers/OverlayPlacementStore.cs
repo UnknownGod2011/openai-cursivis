@@ -52,5 +52,16 @@ internal sealed class OverlayPlacementStore
         await _writer.WriteAsync(_filePath, bytes, cancellationToken).ConfigureAwait(false);
     }
 
+    public void Reset()
+    {
+        try
+        {
+            File.Delete(_filePath);
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+    }
+
     private sealed record SavedPlacement(int X, int Y);
 }

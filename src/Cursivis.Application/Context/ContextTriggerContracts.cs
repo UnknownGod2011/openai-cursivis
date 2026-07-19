@@ -253,6 +253,7 @@ public sealed record ContextTriggerExecutionResult(
 public sealed record GuidedOption
 {
     public const int MaximumDynamicOptions = 4;
+    public const int MaximumInstructionCharacters = 60_000;
 
     public GuidedOption(string id, string label, string instruction, bool isCustomTask = false)
     {
@@ -266,9 +267,12 @@ public sealed record GuidedOption
             throw new ArgumentException("A guided option label must be between 2 and 28 characters.", nameof(label));
         }
 
-        if (!isCustomTask && (string.IsNullOrWhiteSpace(instruction) || instruction.Trim().Length is < 12 or > 1200))
+        if (!isCustomTask && (string.IsNullOrWhiteSpace(instruction) ||
+                              instruction.Trim().Length is < 12 or > MaximumInstructionCharacters))
         {
-            throw new ArgumentException("A guided option instruction must be between 12 and 1,200 characters.", nameof(instruction));
+            throw new ArgumentException(
+                $"A guided option instruction must be between 12 and {MaximumInstructionCharacters:N0} characters.",
+                nameof(instruction));
         }
 
         Id = id.Trim();

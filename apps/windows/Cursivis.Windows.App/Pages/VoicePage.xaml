@@ -36,17 +36,19 @@
                         <StackPanel Spacing="14">
                             <TextBlock x:Name="MicrophoneLabel" x:Uid="MicrophoneLabel" FontWeight="SemiBold" />
                             <ComboBox
+                                x:Name="MicrophoneComboBox"
                                 x:Uid="MicrophoneComboBox"
                                 AutomationProperties.AutomationId="MicrophoneEndpoint"
                                 AutomationProperties.LabeledBy="{x:Bind MicrophoneLabel}"
-                                IsEnabled="False"
+                                SelectionChanged="OnPreferenceChanged"
                                 SelectedIndex="0">
                                 <ComboBoxItem x:Uid="NoMicrophoneOption" Tag="unavailable" />
                             </ComboBox>
-                            <controls:StatusIndicator x:Uid="MicrophonePermissionStatus" Glyph="&#xE946;" />
+                            <controls:StatusIndicator x:Name="MicrophonePermissionStatus" x:Uid="MicrophonePermissionStatus" Glyph="&#xE946;" />
 
                             <TextBlock x:Name="MicrophoneLevelLabel" x:Uid="MicrophoneLevelLabel" FontWeight="SemiBold" />
                             <ProgressBar
+                                x:Name="MicrophoneLevelMeter"
                                 x:Uid="MicrophoneLevelMeter"
                                 AutomationProperties.AutomationId="MicrophoneLevelMeter"
                                 AutomationProperties.LabeledBy="{x:Bind MicrophoneLevelLabel}"
@@ -55,10 +57,11 @@
                                 Value="0" />
                             <TextBlock x:Uid="MicrophoneMeterIdleHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                             <Button
+                                x:Name="AudioTestButton"
                                 x:Uid="AudioTestButton"
                                 AutomationProperties.AutomationId="TestMicrophoneAudio"
-                                HorizontalAlignment="Left"
-                                IsEnabled="False" />
+                                Click="OnAudioTestClicked"
+                                HorizontalAlignment="Left" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
@@ -69,24 +72,29 @@
                             <StackPanel Spacing="4">
                                 <TextBlock x:Name="AssistantVoiceLabel" x:Uid="AssistantVoiceLabel" FontWeight="SemiBold" />
                                 <ComboBox
+                                    x:Name="AssistantVoiceComboBox"
                                     AutomationProperties.AutomationId="AssistantVoice"
                                     AutomationProperties.LabeledBy="{x:Bind AssistantVoiceLabel}"
-                                    SelectedIndex="0">
+                                    SelectedIndex="0"
+                                    SelectionChanged="OnPreferenceChanged">
                                     <ComboBoxItem x:Uid="ServerDefaultVoiceOption" Tag="server_default" />
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Name="VoiceLanguageLabel" x:Uid="VoiceLanguageLabel" FontWeight="SemiBold" />
                                 <ComboBox
+                                    x:Name="VoiceLanguageComboBox"
                                     AutomationProperties.AutomationId="VoiceLanguage"
                                     AutomationProperties.LabeledBy="{x:Bind VoiceLanguageLabel}"
-                                    SelectedIndex="0">
+                                    SelectedIndex="0"
+                                    SelectionChanged="OnPreferenceChanged">
                                     <ComboBoxItem x:Uid="AutomaticLanguageOption" Tag="auto" />
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Name="PauseSensitivityLabel" x:Uid="PauseSensitivityLabel" FontWeight="SemiBold" />
                                 <Slider
+                                    x:Name="PauseSensitivitySlider"
                                     x:Uid="PauseSensitivitySlider"
                                     AutomationProperties.AutomationId="PauseSensitivity"
                                     AutomationProperties.LabeledBy="{x:Bind PauseSensitivityLabel}"
@@ -95,7 +103,8 @@
                                     Minimum="0"
                                     SmallChange="1"
                                     StepFrequency="1"
-                                    Value="2" />
+                                    Value="2"
+                                    ValueChanged="OnPauseSensitivityChanged" />
                                 <TextBlock x:Uid="PauseSensitivityHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                             </StackPanel>
                         </StackPanel>
@@ -105,12 +114,13 @@
                 <controls:SettingsCard x:Uid="VoiceRealtimeCard" IconGlyph="&#xE768;">
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="12">
-                            <controls:StatusIndicator x:Uid="RealtimeConnectionStatus" Glyph="&#xE711;" />
+                            <controls:StatusIndicator x:Name="RealtimeConnectionStatus" x:Uid="RealtimeConnectionStatus" Glyph="&#xE711;" />
                             <Button
+                                x:Name="RealtimeConnectionTestButton"
                                 x:Uid="RealtimeConnectionTestButton"
                                 AutomationProperties.AutomationId="TestRealtimeConnection"
-                                HorizontalAlignment="Left"
-                                IsEnabled="False" />
+                                Click="OnRealtimeConnectionTestClicked"
+                                HorizontalAlignment="Left" />
                             <TextBlock x:Uid="RealtimeTestUnavailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                         </StackPanel>
                     </controls:SettingsCard.Body>

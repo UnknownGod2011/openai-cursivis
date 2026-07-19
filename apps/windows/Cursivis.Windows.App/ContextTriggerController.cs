@@ -9,6 +9,7 @@ using Cursivis.Domain.QuickTasks;
 using Cursivis.Windows.App.Helpers;
 using Cursivis.Windows.Platform.Foreground;
 using Cursivis.Windows.Platform.Hotkeys;
+using Cursivis.Windows.Platform.Overlays;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Cursivis.Windows.App;
@@ -33,6 +34,8 @@ public sealed class ContextTriggerController : IDisposable
     private readonly ResultAutoCopyCoordinator _autoCopy;
     private readonly Stack<ContextSnapshot> _undoHistory = new();
     private readonly ModelIdentifier _model;
+    private InteractionMode _defaultMode;
+    private bool _closeResultsAfterInsert;
     private IReadOnlyList<GuidedOption>? _guidedOptions;
     private ContextFingerprint? _guidedOptionsFingerprint;
     private bool _externalUndoAvailable;
@@ -51,7 +54,9 @@ public sealed class ContextTriggerController : IDisposable
         IHotkeyInputSettler inputSettler,
         ContextOrbWindow orb,
         ContextResultWindow resultWindow,
-        ModelIdentifier model)
+        ModelIdentifier model,
+        InteractionMode defaultMode = InteractionMode.Smart,
+        bool closeResultsAfterInsert = false)
     {
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
         _regionCapture = regionCapture ?? throw new ArgumentNullException(nameof(regionCapture));
@@ -67,12 +72,14 @@ public sealed class ContextTriggerController : IDisposable
         _orb = orb ?? throw new ArgumentNullException(nameof(orb));
         _resultWindow = resultWindow ?? throw new ArgumentNullException(nameof(resultWindow));
         _model = model;
+        _defaultMode = defaultMode;
+        _closeResultsAfterInsert = closeResultsAfterInsert;
 
         _resultWindow.UndoRequested += OnUndoRequested;
         _resultWindow.InsertRequested += OnInsertRequested;
         _resultWindow.TakeActionRequested += OnTakeActionRequested;
         _resultWindow.MoreOptionsRequested += OnMoreOptionsRequested;
-        _resultWindow.RefineRequested += OnMoreOptionsRequested;
+        _resultWindow.RefineRequested += OnRefineRequested;
         _resultWindow.CloseRequested += OnCloseRequested;
         _orb.CancelRequested += OnOrbCancelRequested;
         _orb.GuidedOperationRequested += OnGuidedOperationRequested;
@@ -87,6 +94,19 @@ public sealed class ContextTriggerController : IDisposable
     public event Action<string>? BrowserTakeActionRequested;
 
     public event EventHandler? ExternalUndoRequested;
+
+    public void SetDefaultMode(InteractionMode mode)
+    {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        }
+
+        _defaultMode = mode;
+    }
+
+    public void SetCloseResultsAfterInsert(bool closeResultsAfterInsert) =>
+        _closeResultsAfterInsert = closeResultsAfterInsert;
 
     public void Invoke()
     {
@@ -158,7 +178,7 @@ public sealed class ContextTriggerController : IDisposable
         _resultWindow.InsertRequested -= OnInsertRequested;
         _resultWindow.TakeActionRequested -= OnTakeActionRequested;
         _resultWindow.MoreOptionsRequested -= OnMoreOptionsRequested;
-        _resultWindow.RefineRequested -= OnMoreOptionsRequested;
+        _resultWindow.RefineRequested -= OnRefineRequested;
         _resultWindow.CloseRequested -= OnCloseRequested;
         _orb.CancelRequested -= OnOrbCancelRequested;
         _orb.GuidedOperationRequested -= OnGuidedOperationRequested;
@@ -421,6 +441,12 @@ public sealed class ContextTriggerController : IDisposable
             return;
         }
 
+        if (_defaultMode == InteractionMode.Guided)
+        {
+            await ShowGuidedOptionsAsync(input, operation.Token);
+            return;
+        }
+
         ContextTriggerExecutionResult execution = await _trigger.ExecuteAsync(
             input,
             _model,
@@ -634,6 +660,77 @@ public sealed class ContextTriggerController : IDisposable
             _resultWindow.ShowNotice(
                 ResourceText.Get("ContextResultProviderFailureTitle"),
                 ResourceText.Get("ContextResultProviderFailureMessage"),
+                InfoBarSeverity.Error);
+        }
+    }
+
+    private async void OnRefineRequested(object? sender, EventArgs args)
+    {
+        try
+        {
+            ContextSessionAccess session = _session.GetCurrent();
+            if (session.Status != ContextSessionAccessStatus.Available ||
+                session.Context is null || session.LatestResult is null)
+            {
+                _resultWindow.ShowNotice(
+                    ResourceText.Get("ContextResultContextExpiredTitle"),
+                    ResourceText.Get("ContextResultContextExpiredMessage"),
+                    InfoBarSeverity.Error);
+                return;
+            }
+
+            OverlayRectangle anchor = _resultWindow.OverlayBounds;
+            SmartResult current = session.LatestResult;
+            _resultWindow.Hide();
+            var inputWindow = new QuickTaskInputWindow(
+                ResourceText.Get("ContextResultRefineInputTitle"),
+                _resultWindow.CurrentTheme,
+                ResourceText.Get("ContextResultRefineInputPlaceholder"));
+            string? request = await inputWindow.ShowAsync(CancellationToken.None, anchor);
+            if (string.IsNullOrWhiteSpace(request))
+            {
+                _resultWindow.ShowResult(current, guidedMode: false);
+                return;
+            }
+
+            if (request.Length > 4_000)
+            {
+                _resultWindow.ShowResult(current, guidedMode: false);
+                _resultWindow.ShowNotice(
+                    ResourceText.Get("ContextResultRefineTooLongTitle"),
+                    ResourceText.Get("ContextResultRefineTooLongMessage"),
+                    InfoBarSeverity.Warning);
+                return;
+            }
+
+            string currentContent = current.FinalContent.Length <= 50_000
+                ? current.FinalContent
+                : current.FinalContent[..50_000];
+            var option = new GuidedOption(
+                "refine_result",
+                ResourceText.Get("ContextResultRefiningLabel"),
+                $"""
+                Improve the current generated result according to the user's refinement request while preserving the original captured context. Return the complete refined result only.
+
+                <user_refinement_request>
+                {request.Trim()}
+                </user_refinement_request>
+
+                <current_generated_result>
+                {currentContent}
+                </current_generated_result>
+                """);
+            await RunGuidedAsync(option);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception)
+        {
+            _orb.Hide();
+            _resultWindow.ShowNotice(
+                ResourceText.Get("ContextResultUnexpectedFailureTitle"),
+                ResourceText.Get("ContextResultUnexpectedFailureMessage"),
                 InfoBarSeverity.Error);
         }
     }
@@ -914,8 +1011,17 @@ public sealed class ContextTriggerController : IDisposable
                 OrbPresentationState.Done,
                 ResourceText.Get("ContextOrbReplacedStatus"),
                 ResourceText.Get("ContextOrbReplacedDetail"));
-            _session.Clear();
-            await HideOrbAfterAsync(TimeSpan.FromMilliseconds(900));
+            if (_closeResultsAfterInsert)
+            {
+                _session.Clear();
+                await HideOrbAfterAsync(TimeSpan.FromMilliseconds(900));
+            }
+            else
+            {
+                _orb.Hide();
+                _resultWindow.ShowResult(currentResult, guidedMode: false);
+                _resultWindow.SetUndoAvailable(true);
+            }
             return;
         }
 
@@ -967,8 +1073,17 @@ public sealed class ContextTriggerController : IDisposable
                 OrbPresentationState.Done,
                 ResourceText.Get("ContextOrbInsertedStatus"),
                 ResourceText.Get("ContextOrbInsertedDetail"));
-            _session.Clear();
-            await HideOrbAfterAsync(TimeSpan.FromMilliseconds(900));
+            if (_closeResultsAfterInsert)
+            {
+                _session.Clear();
+                await HideOrbAfterAsync(TimeSpan.FromMilliseconds(900));
+            }
+            else
+            {
+                _orb.Hide();
+                _resultWindow.ShowResult(currentResult, guidedMode: false);
+                _resultWindow.SetUndoAvailable(_undoHistory.Count > 0);
+            }
             return;
         }
 

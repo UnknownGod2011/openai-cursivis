@@ -52,6 +52,11 @@
   <data name="ContextResultKeyboardHint.Text" xml:space="preserve"><value>Esc close · Ctrl+C copy · Ctrl+Enter replace</value></data>
   <data name="ContextResultRefineButton.Content" xml:space="preserve"><value>Refine</value></data>
   <data name="ContextResultRefineButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Refine the current result</value></data>
+  <data name="ContextResultRefineInputTitle" xml:space="preserve"><value>Refine result</value></data>
+  <data name="ContextResultRefineInputPlaceholder" xml:space="preserve"><value>Describe the improvement…</value></data>
+  <data name="ContextResultRefiningLabel" xml:space="preserve"><value>Refining</value></data>
+  <data name="ContextResultRefineTooLongTitle" xml:space="preserve"><value>Refinement is too long</value></data>
+  <data name="ContextResultRefineTooLongMessage" xml:space="preserve"><value>Keep refinement instructions under 4,000 characters.</value></data>
   <data name="ContextOrbMicrophoneButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Start voice input</value></data>
   <data name="ContextOrbSettingsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Open Cursivis Settings</value></data>
   <data name="ContextOrbCancelButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Cancel the current Cursivis operation</value></data>
@@ -430,6 +435,10 @@
   <data name="HotkeyRegistrationSucceededPageStatus" xml:space="preserve"><value>The global shortcut is active and saved.</value></data>
   <data name="HotkeyRegistrationFailedPageStatus" xml:space="preserve"><value>Windows could not activate that shortcut. The previous shortcut remains active.</value></data>
   <data name="HotkeyDefaultsRegisteredStatus" xml:space="preserve"><value>Default shortcuts are active and saved.</value></data>
+  <data name="SaveStateUnsavedChanges" xml:space="preserve"><value>Unsaved changes</value></data>
+  <data name="SaveStateSaved" xml:space="preserve"><value>Settings saved</value></data>
+  <data name="SaveStateSaveFailed" xml:space="preserve"><value>Settings could not be saved</value></data>
+  <data name="OrbPositionResetCompleted" xml:space="preserve"><value>Orb position reset</value></data>
 
   <data name="VoiceMicrophoneCard.Header" xml:space="preserve"><value>Microphone</value></data>
   <data name="VoiceMicrophoneCard.Description" xml:space="preserve"><value>A real endpoint and exclusive Settings test lease are required before the meter or audio test can run.</value></data>
@@ -459,6 +468,20 @@
   <data name="RealtimeConnectionTestButton.Content" xml:space="preserve"><value>Test Realtime connection</value></data>
   <data name="RealtimeConnectionTestButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Test OpenAI Realtime connection</value></data>
   <data name="RealtimeTestUnavailableHelp.Text" xml:space="preserve"><value>Testing requires a saved key, selected endpoint, and audio coordinator.</value></data>
+  <data name="MicrophoneAvailableStatus" xml:space="preserve"><value>Microphone available</value></data>
+  <data name="MicrophoneAvailableDetail" xml:space="preserve"><value>Select an input and run the bounded audio test.</value></data>
+  <data name="MicrophoneUnavailableStatus" xml:space="preserve"><value>No microphone found</value></data>
+  <data name="MicrophoneUnavailableDetail" xml:space="preserve"><value>Connect a Windows recording device and reopen this page.</value></data>
+  <data name="VoiceSettingsSaveFailedStatus" xml:space="preserve"><value>Voice settings could not be saved</value></data>
+  <data name="MicrophoneTestCompletedStatus" xml:space="preserve"><value>Microphone test complete</value></data>
+  <data name="MicrophonePeakLevelFormat" xml:space="preserve"><value>Captured a real two-second sample. Peak level: {0}%.</value></data>
+  <data name="MicrophoneTestFailedStatus" xml:space="preserve"><value>Microphone test failed</value></data>
+  <data name="MicrophoneTestFailedDetail" xml:space="preserve"><value>Windows could not open or read the selected input.</value></data>
+  <data name="RealtimeTestingStatus" xml:space="preserve"><value>Testing Realtime connection</value></data>
+  <data name="RealtimeConnectedStatus" xml:space="preserve"><value>Realtime connected</value></data>
+  <data name="RealtimeConnectedDetail" xml:space="preserve"><value>The session reached the listening state and closed cleanly.</value></data>
+  <data name="RealtimeConnectionFailedStatus" xml:space="preserve"><value>Realtime connection failed</value></data>
+  <data name="RealtimeConnectionFailedDetail" xml:space="preserve"><value>Check the saved API key, model access, network, and microphone.</value></data>
 
   <data name="BrowserHealthCard.Header" xml:space="preserve"><value>Authenticated connection health</value></data>
   <data name="BrowserHealthCard.Description" xml:space="preserve"><value>Connected means a current, version-compatible handshake—not an open process or port.</value></data>
@@ -487,6 +510,11 @@
   <data name="OneShotCaptureExplanation.Text" xml:space="preserve"><value>One-shot analysis captures one approved image, answers the request, and then disposes the image when it is no longer needed.</value></data>
   <data name="NavigationCaptureExplanation.Text" xml:space="preserve"><value>Navigation Guidance shows a persistent capture indicator, waits for meaningful changes, and never streams invisible full-screen video.</value></data>
   <data name="CaptureStopExplanation.Text" xml:space="preserve"><value>Escape, the global Cancel shortcut, the orb stop control, or a voice stop command ends capture immediately.</value></data>
+  <data name="AllowNavigationGuidanceToggle.Header" xml:space="preserve"><value>Allow explicit Navigation Guidance capture</value></data>
+  <data name="AllowNavigationGuidanceToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="AllowNavigationGuidanceToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="PrivacySettingsSaveFailedTitle" xml:space="preserve"><value>Privacy settings not saved</value></data>
+  <data name="PrivacySettingsSaveFailedMessage" xml:space="preserve"><value>Cursivis kept the previous capture permissions.</value></data>
   <data name="PrivacyActiveWindowOption.Content" xml:space="preserve"><value>Active window only</value></data>
   <data name="PrivacyActiveWindowOption.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Capture active window only</value></data>
   <data name="PrivacyDisplayOption.Content" xml:space="preserve"><value>Active display after explicit approval</value></data>
@@ -570,6 +598,11 @@
   <data name="DiagnosticsReportBrowserLabel" xml:space="preserve"><value>Browser bridge</value></data>
   <data name="DiagnosticsReportHotkeysLabel" xml:space="preserve"><value>Hotkeys</value></data>
   <data name="DiagnosticsReportMicrophoneLabel" xml:space="preserve"><value>Microphone</value></data>
+  <data name="DiagnosticsExportedTitle" xml:space="preserve"><value>Diagnostics exported</value></data>
+  <data name="DiagnosticsExportFailedTitle" xml:space="preserve"><value>Export failed</value></data>
+  <data name="DiagnosticsExportFailedMessage" xml:space="preserve"><value>Cursivis could not write the sanitized report to Documents.</value></data>
+  <data name="DiagnosticsLogsFailedTitle" xml:space="preserve"><value>Logs unavailable</value></data>
+  <data name="DiagnosticsLogsFailedMessage" xml:space="preserve"><value>Cursivis could not open the local logs folder.</value></data>
   <data name="DiagnosticsReportSecretsLabel" xml:space="preserve"><value>Sensitive content</value></data>
   <data name="DiagnosticsSecretsExcluded" xml:space="preserve"><value>Excluded</value></data>
   <data name="StatusNotConfigured" xml:space="preserve"><value>Not configured</value></data>

@@ -103,7 +103,7 @@ public sealed class HotkeySettings
         KeyValuePair.Create(HotkeyCommand.SmartDictation, Chord("U")),
         KeyValuePair.Create(HotkeyCommand.CustomQuickTask, Chord("Y")),
         KeyValuePair.Create(HotkeyCommand.CancelEmergencyStop, Chord("ESCAPE")),
-        KeyValuePair.Create(HotkeyCommand.OpenSettings, Chord("COMMA")),
+        KeyValuePair.Create(HotkeyCommand.OpenSettings, Chord("S")),
     ]);
 
     private static HotkeyChord Chord(string key) =>

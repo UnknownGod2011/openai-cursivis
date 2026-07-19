@@ -10,6 +10,7 @@ using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
 using Cursivis.Domain.QuickTasks;
+using Cursivis.Domain.Settings;
 using Cursivis.Contracts.Browser;
 using Cursivis.Infrastructure.OpenAI;
 using Cursivis.Infrastructure.BrowserBridge;
@@ -23,7 +24,11 @@ using Cursivis.Windows.Platform.Hotkeys;
 using Cursivis.Windows.Platform.Overlays;
 using Cursivis.Windows.Platform.Security;
 using Cursivis.Windows.Platform.Selection;
+using Cursivis.Windows.Platform.Startup;
 using Microsoft.UI.Xaml;
+using DomainApplicationTheme = Cursivis.Domain.Settings.ApplicationTheme;
+using PlatformHotkeyChord = Cursivis.Windows.Platform.Hotkeys.HotkeyChord;
+using PlatformHotkeyModifiers = Cursivis.Windows.Platform.Hotkeys.HotkeyModifiers;
 
 namespace Cursivis.Windows.App;
 
@@ -50,11 +55,16 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly ILiveModeMemoryStore _liveModeMemory;
     private readonly NativePointerMonitor _pointerMonitor;
     private readonly VersionedJsonSettingsStore<QuickTaskDefinition> _quickTaskStore;
+    private readonly VersionedJsonSettingsStore<ApplicationSettings> _settingsStore;
+    private readonly WindowsStartupRegistration _startupRegistration;
     private readonly IQuickTaskFinalizationService _quickTaskFinalizer;
     private readonly object _quickTaskGate = new();
+    private readonly object _settingsGate = new();
+    private readonly SemaphoreSlim _settingsWriteGate = new(1, 1);
     private CancellationTokenSource? _liveCompletionVisibilityCancellation;
     private CancellationTokenSource? _dictationCompletionVisibilityCancellation;
     private QuickTaskDefinition _currentQuickTask;
+    private ApplicationSettings _currentSettings;
     private bool _disposed;
 
     private AppRuntime(
@@ -74,8 +84,12 @@ public sealed class AppRuntime : IAsyncDisposable
         ILiveModeMemoryStore liveModeMemory,
         NativePointerMonitor pointerMonitor,
         VersionedJsonSettingsStore<QuickTaskDefinition> quickTaskStore,
+        VersionedJsonSettingsStore<ApplicationSettings> settingsStore,
+        WindowsStartupRegistration startupRegistration,
         IQuickTaskFinalizationService quickTaskFinalizer,
         QuickTaskDefinition currentQuickTask,
+        ApplicationSettings currentSettings,
+        SettingsLoadStatus settingsLoadStatus,
         HotkeyUpdateResult contextHotkeyStatus,
         HotkeyUpdateResult quickTaskHotkeyStatus,
         HotkeyUpdateResult directTakeActionHotkeyStatus,
@@ -100,8 +114,12 @@ public sealed class AppRuntime : IAsyncDisposable
         _liveModeMemory = liveModeMemory;
         _pointerMonitor = pointerMonitor;
         _quickTaskStore = quickTaskStore;
+        _settingsStore = settingsStore;
+        _startupRegistration = startupRegistration;
         _quickTaskFinalizer = quickTaskFinalizer;
         _currentQuickTask = currentQuickTask;
+        _currentSettings = currentSettings;
+        ApplicationSettingsLoadStatus = settingsLoadStatus;
         ContextHotkeyStatus = contextHotkeyStatus;
         QuickTaskHotkeyStatus = quickTaskHotkeyStatus;
         DirectTakeActionHotkeyStatus = directTakeActionHotkeyStatus;
@@ -145,6 +163,26 @@ public sealed class AppRuntime : IAsyncDisposable
     public BrowserBridgeSnapshot BrowserBridgeStatus => _browserBridge.Snapshot;
 
     public ILiveModeMemoryStore LiveModeMemory => _liveModeMemory;
+
+    public SettingsLoadStatus ApplicationSettingsLoadStatus { get; }
+
+    public ApplicationSettings CurrentSettings
+    {
+        get
+        {
+            lock (_settingsGate)
+            {
+                return _currentSettings;
+            }
+        }
+    }
+
+    public bool IsLaunchAtSignInEnabled => _startupRegistration.IsEnabled;
+
+    public string LogsDirectory => CursivisStoragePaths.ForCurrentUser().LogsDirectory;
+
+    public IReadOnlyList<WindowsMicrophoneEndpoint> MicrophoneEndpoints =>
+        WindowsAudioDeviceCatalog.GetCaptureDevices();
 
     public Task<BrowserFormSnapshot> TestBrowserIntegrationAsync(
         CancellationToken cancellationToken = default) =>
@@ -192,6 +230,144 @@ public sealed class AppRuntime : IAsyncDisposable
         }
 
         return await _hotkeys.UpdateAsync(commandName, chord, cancellationToken);
+    }
+
+    public async Task<ApplicationSettings> UpdateApplicationSettingsAsync(
+        Func<ApplicationSettings, ApplicationSettings> update,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        await _settingsWriteGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ApplicationSettings next;
+            lock (_settingsGate)
+            {
+                next = update(_currentSettings);
+            }
+
+            if (!SettingsValidator.Validate(next).IsValid)
+            {
+                throw new ArgumentException("The requested application settings are invalid.", nameof(update));
+            }
+
+            await _settingsStore.SaveAsync(next, cancellationToken).ConfigureAwait(false);
+            lock (_settingsGate)
+            {
+                _currentSettings = next;
+            }
+            ContextTrigger.SetDefaultMode(next.Interaction.DefaultMode);
+            ContextTrigger.SetCloseResultsAfterInsert(next.Interaction.CloseResultsAfterInsert);
+
+            return next;
+        }
+        finally
+        {
+            _settingsWriteGate.Release();
+        }
+    }
+
+    public async Task<ApplicationSettings> SaveInteractionPreferencesAsync(
+        InteractionSettings interaction,
+        OrbVisibility orbVisibility,
+        bool launchAtSignIn,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(interaction);
+        bool previousStartup = _startupRegistration.IsEnabled;
+        if (previousStartup != launchAtSignIn)
+        {
+            _startupRegistration.SetEnabled(launchAtSignIn);
+        }
+
+        try
+        {
+            return await UpdateApplicationSettingsAsync(
+                settings => settings with
+                {
+                    Interaction = interaction,
+                    Appearance = settings.Appearance with { OrbVisibility = orbVisibility },
+                    Startup = settings.Startup with { LaunchAtSignIn = launchAtSignIn },
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (previousStartup != launchAtSignIn)
+            {
+                _startupRegistration.SetEnabled(previousStartup);
+            }
+            throw;
+        }
+    }
+
+    public void ResetOrbPlacement() => _orbWindow.ResetRememberedPlacement();
+
+    public async Task<float> TestMicrophoneAsync(
+        string? endpointId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        if (duration < TimeSpan.FromMilliseconds(250) || duration > TimeSpan.FromSeconds(10))
+        {
+            throw new ArgumentOutOfRangeException(nameof(duration));
+        }
+
+        await _liveMode.StopAsync(cancellationToken).ConfigureAwait(false);
+        await _smartDictation.CancelAsync(cancellationToken).ConfigureAwait(false);
+        await using IDictationAudioCapture capture = await new WindowsDictationAudioCaptureFactory(
+            WindowsAudioDeviceCatalog.ParseDeviceNumber(endpointId)).OpenAsync(cancellationToken);
+        using var durationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        durationCancellation.CancelAfter(duration);
+        float maximum = 0;
+        try
+        {
+            await foreach (DictationAudioFrame frame in capture
+                               .ReadCapturedAudioAsync(durationCancellation.Token)
+                               .ConfigureAwait(false))
+            {
+                maximum = Math.Max(maximum, frame.Level);
+            }
+        }
+        catch (OperationCanceledException) when (
+            durationCancellation.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            await capture.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+
+        return maximum;
+    }
+
+    public async Task<LiveModeSnapshot> TestRealtimeConnectionAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await _smartDictation.CancelAsync(cancellationToken).ConfigureAwait(false);
+        await _liveMode.StopAsync(cancellationToken).ConfigureAwait(false);
+        var completion = new TaskCompletionSource<LiveModeSnapshot>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        void Observe(LiveModeSnapshot snapshot)
+        {
+            if (snapshot.State is LiveModeState.Listening or LiveModeState.UserSpeaking or LiveModeState.Error)
+            {
+                completion.TrySetResult(snapshot);
+            }
+        }
+
+        _liveMode.SnapshotChanged += Observe;
+        try
+        {
+            await _liveMode.StartAsync(cancellationToken).ConfigureAwait(false);
+            return await completion.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _liveMode.SnapshotChanged -= Observe;
+            await _liveMode.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     public async Task<HotkeyUpdateResult> UpdateQuickTaskHotkeyAsync(
@@ -256,6 +432,34 @@ public sealed class AppRuntime : IAsyncDisposable
     public static async Task<AppRuntime> CreateAsync(nint mainWindowHandle)
     {
         CursivisStoragePaths paths = CursivisStoragePaths.ForCurrentUser();
+        // WinUI does not install a SynchronizationContext for every async
+        // continuation. Construct compositor-backed windows while this method
+        // is still on the launch DispatcherQueue thread.
+        var orbWindow = new ContextOrbWindow();
+        var resultWindow = new ContextResultWindow();
+        var liveModeWindow = new LiveModeOverlayWindow();
+        var pointerMonitor = new NativePointerMonitor();
+        var settingsStore = new VersionedJsonSettingsStore<ApplicationSettings>(
+            new VersionedJsonSettingsStoreOptions(
+                paths.SettingsFile,
+                ApplicationSettings.CurrentSchemaVersion,
+                maximumFileBytes: 512 * 1024),
+            new ApplicationSettingsJsonCodec());
+        SettingsLoadResult<ApplicationSettings> settingsLoad = await settingsStore.LoadAsync();
+        var startupRegistration = new WindowsStartupRegistration();
+        ApplicationSettings currentSettings = settingsLoad.Value;
+        bool actualStartup = startupRegistration.IsEnabled;
+        if (currentSettings.Startup.LaunchAtSignIn != actualStartup)
+        {
+            currentSettings = currentSettings with
+            {
+                Startup = currentSettings.Startup with { LaunchAtSignIn = actualStartup },
+            };
+        }
+        if (settingsLoad.Status == SettingsLoadStatus.FirstRun || currentSettings != settingsLoad.Value)
+        {
+            await settingsStore.SaveAsync(currentSettings);
+        }
         var secretStore = new WindowsCurrentUserSecretStore(
             new WindowsCurrentUserSecretStoreOptions(
                 paths.SecretsDirectory,
@@ -298,10 +502,6 @@ public sealed class AppRuntime : IAsyncDisposable
         IResultClipboardService clipboard = new WindowsResultClipboardService();
         var inputSettler = new WindowsHotkeyInputSettler();
 
-        var orbWindow = new ContextOrbWindow();
-        var resultWindow = new ContextResultWindow();
-        var liveModeWindow = new LiveModeOverlayWindow();
-        var pointerMonitor = new NativePointerMonitor();
         var foregroundActivator = new Win32ForegroundWindowActivator();
         var controller = new ContextTriggerController(
             capture,
@@ -316,7 +516,9 @@ public sealed class AppRuntime : IAsyncDisposable
             inputSettler,
             orbWindow,
             resultWindow,
-            ModelCatalog.Balanced);
+            currentSettings.Models.ResponsesModel,
+            currentSettings.Interaction.DefaultMode,
+            currentSettings.Interaction.CloseResultsAfterInsert);
         var browserBridge = new BrowserBridgeService(
             new HashSet<string>(StringComparer.Ordinal)
             {
@@ -334,7 +536,7 @@ public sealed class AppRuntime : IAsyncDisposable
             controller,
             orbWindow,
             resultWindow,
-            ModelCatalog.Balanced);
+            currentSettings.Models.ResponsesModel);
         var liveModeMemory = new LiveModeMemoryStore(paths.MemoryFile);
         var liveModeCapabilities = new WindowsLiveModeCapabilityExecutor(
             clipboard,
@@ -342,22 +544,34 @@ public sealed class AppRuntime : IAsyncDisposable
             regionCapture,
             contextService,
             takeActionController,
-            ModelCatalog.Balanced);
+            currentSettings.Models.ResponsesModel);
         var liveMode = new RealtimeLiveModeService(
             realtimeGateway,
-            new WindowsRealtimeAudioSessionFactory(),
+            new WindowsRealtimeAudioSessionFactory(
+                WindowsAudioDeviceCatalog.ParseDeviceNumber(currentSettings.Voice.DeviceEndpointId)),
             new LiveModeContextProvider(inputSettler, capture, foreground),
             new LiveModeToolExecutor(liveModeMemory, liveModeCapabilities),
-            ModelCatalog.Realtime.Value);
+            currentSettings.Models.RealtimeModel.Value);
         var smartDictation = new SmartDictationService(
-            new WindowsDictationAudioCaptureFactory(),
+            new WindowsDictationAudioCaptureFactory(
+                WindowsAudioDeviceCatalog.ParseDeviceNumber(currentSettings.Voice.DeviceEndpointId)),
             new WindowsDictationTargetProvider(foreground),
             transcriptionGateway,
             responsesGateway,
             insertion,
             clipboard,
             ModelCatalog.EconomyTranscription,
-            ModelCatalog.Balanced);
+            currentSettings.Models.ResponsesModel);
+
+        ElementTheme requestedTheme = currentSettings.Appearance.Theme switch
+        {
+            DomainApplicationTheme.Light => ElementTheme.Light,
+            DomainApplicationTheme.Dark => ElementTheme.Dark,
+            _ => ElementTheme.Default,
+        };
+        resultWindow.SetRequestedTheme(requestedTheme);
+        orbWindow.SetRequestedTheme(requestedTheme);
+        liveModeWindow.SetRequestedTheme(requestedTheme);
 
         var messageHook = new Win32WindowMessageHook(mainWindowHandle);
         var hotkeyPersister = new JsonHotkeyStatePersister(paths.HotkeysFile);
@@ -383,11 +597,11 @@ public sealed class AppRuntime : IAsyncDisposable
             ContextTriggerCommand,
             LoadHotkey(
                 ContextTriggerCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x4F)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x4F)));
         Cursivis.Windows.Platform.Hotkeys.HotkeyChord quickTaskChord = LoadHotkey(
             QuickTaskCommand,
             new Cursivis.Windows.Platform.Hotkeys.HotkeyChord(
-                HotkeyModifiers.Control | HotkeyModifiers.Alt,
+                PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt,
                 0x59));
         HotkeyUpdateResult quickTaskStatus = await hotkeys.RegisterInitialAsync(
             QuickTaskCommand,
@@ -396,27 +610,27 @@ public sealed class AppRuntime : IAsyncDisposable
             DirectTakeActionCommand,
             LoadHotkey(
                 DirectTakeActionCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x49)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x49)));
         HotkeyUpdateResult smartDictationStatus = await hotkeys.RegisterInitialAsync(
             SmartDictationCommand,
             LoadHotkey(
                 SmartDictationCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x55)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x55)));
         HotkeyUpdateResult liveModeStatus = await hotkeys.RegisterInitialAsync(
             RealtimeLiveModeCommand,
             LoadHotkey(
                 RealtimeLiveModeCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x50)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x50)));
         HotkeyUpdateResult cancelStatus = await hotkeys.RegisterInitialAsync(
             CancelCommand,
             LoadHotkey(
                 CancelCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x1B)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x1B)));
         HotkeyUpdateResult settingsStatus = await hotkeys.RegisterInitialAsync(
             OpenSettingsCommand,
             LoadHotkey(
                 OpenSettingsCommand,
-                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x53)));
+                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x53)));
 
         return new AppRuntime(
             credentialManager,
@@ -435,8 +649,12 @@ public sealed class AppRuntime : IAsyncDisposable
             liveModeMemory,
             pointerMonitor,
             quickTaskStore,
+            settingsStore,
+            startupRegistration,
             quickTaskFinalizer,
             quickTaskLoad.Value,
+            currentSettings,
+            settingsLoad.Status,
             contextStatus,
             quickTaskStatus,
             directTakeActionStatus,
@@ -480,6 +698,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _messageHook.Dispose();
         _pointerMonitor.Dispose();
         await _hotkeys.DisposeAsync();
+        _settingsWriteGate.Dispose();
         _resultWindow.Close();
         _liveModeWindow.Close();
         _orbWindow.Close();
@@ -560,6 +779,15 @@ public sealed class AppRuntime : IAsyncDisposable
         _resultWindow.SetRequestedTheme(theme);
         _orbWindow.SetRequestedTheme(theme);
         _liveModeWindow.SetRequestedTheme(theme);
+        _ = UpdateApplicationSettingsAsync(settings => settings with
+        {
+            Appearance = settings.Appearance with
+            {
+                Theme = theme == ElementTheme.Dark
+                    ? DomainApplicationTheme.Dark
+                    : DomainApplicationTheme.Light,
+            },
+        });
     }
 
     private void OnLiveModeRequested(object? sender, EventArgs args) =>

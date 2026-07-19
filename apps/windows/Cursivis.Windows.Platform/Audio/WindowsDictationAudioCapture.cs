@@ -9,10 +9,17 @@ namespace Cursivis.Windows.Platform.Audio;
 
 public sealed class WindowsDictationAudioCaptureFactory : IDictationAudioCaptureFactory
 {
+    private readonly int _deviceNumber;
+
+    public WindowsDictationAudioCaptureFactory(int deviceNumber = 0)
+    {
+        _deviceNumber = deviceNumber;
+    }
+
     public Task<IDictationAudioCapture> OpenAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IDictationAudioCapture>(new WindowsDictationAudioCapture());
+        return Task.FromResult<IDictationAudioCapture>(new WindowsDictationAudioCapture(_deviceNumber));
     }
 }
 
@@ -33,7 +40,7 @@ internal sealed class WindowsDictationAudioCapture : IDictationAudioCapture
     private int _stopRequested;
     private int _disposed;
 
-    public WindowsDictationAudioCapture()
+    public WindowsDictationAudioCapture(int deviceNumber)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -49,7 +56,7 @@ internal sealed class WindowsDictationAudioCapture : IDictationAudioCapture
         });
         _capture = new WaveInEvent
         {
-            DeviceNumber = 0,
+            DeviceNumber = deviceNumber,
             WaveFormat = new WaveFormat(SampleRate, BitsPerSample, Channels),
             BufferMilliseconds = BufferMilliseconds,
             NumberOfBuffers = 4,

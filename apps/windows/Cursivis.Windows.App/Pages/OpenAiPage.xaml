@@ -56,10 +56,11 @@
                         <StackPanel Spacing="12">
                             <TextBlock x:Name="QualityProfileLabel" x:Uid="QualityProfileLabel" FontWeight="SemiBold" />
                             <ComboBox
+                                x:Name="QualityProfileComboBox"
                                 x:Uid="QualityProfileComboBox"
                                 AutomationProperties.AutomationId="QualityProfile"
                                 AutomationProperties.LabeledBy="{x:Bind QualityProfileLabel}"
-                                SelectedIndex="1">
+                                SelectionChanged="OnQualityProfileChanged">
                                 <ComboBoxItem x:Uid="EconomyProfileOption" Tag="Economy" />
                                 <ComboBoxItem x:Uid="BalancedProfileOption" Tag="Balanced" />
                                 <ComboBoxItem x:Uid="BestQualityProfileOption" Tag="Best" />
@@ -77,9 +78,10 @@
                                     <StackPanel Spacing="6">
                                         <TextBlock x:Name="ResponsesModelLabel" x:Uid="ResponsesModelLabel" FontWeight="SemiBold" />
                                         <ComboBox
+                                            x:Name="ResponsesModelComboBox"
                                             AutomationProperties.AutomationId="ResponsesModel"
                                             AutomationProperties.LabeledBy="{x:Bind ResponsesModelLabel}"
-                                            SelectedIndex="1">
+                                            SelectionChanged="OnAdvancedModelChanged">
                                             <ComboBoxItem x:Uid="LunaModelOption" Tag="gpt-5.6-luna" />
                                             <ComboBoxItem x:Uid="TerraModelOption" Tag="gpt-5.6-terra" />
                                             <ComboBoxItem x:Uid="SolModelOption" Tag="gpt-5.6-sol" />
@@ -89,9 +91,10 @@
                                     <StackPanel Spacing="6">
                                         <TextBlock x:Name="RealtimeModelLabel" x:Uid="RealtimeModelLabel" FontWeight="SemiBold" />
                                         <ComboBox
+                                            x:Name="RealtimeModelComboBox"
                                             AutomationProperties.AutomationId="RealtimeModel"
                                             AutomationProperties.LabeledBy="{x:Bind RealtimeModelLabel}"
-                                            SelectedIndex="0">
+                                            SelectionChanged="OnAdvancedModelChanged">
                                             <ComboBoxItem x:Uid="RealtimeModelOption" Tag="gpt-realtime-2.1" />
                                             <ComboBoxItem x:Uid="RealtimeMiniModelOption" Tag="gpt-realtime-2.1-mini" />
                                         </ComboBox>
@@ -100,9 +103,10 @@
                                     <StackPanel Spacing="6">
                                         <TextBlock x:Name="TranscriptionModelLabel" x:Uid="TranscriptionModelLabel" FontWeight="SemiBold" />
                                         <ComboBox
+                                            x:Name="TranscriptionModelComboBox"
                                             AutomationProperties.AutomationId="TranscriptionModel"
                                             AutomationProperties.LabeledBy="{x:Bind TranscriptionModelLabel}"
-                                            SelectedIndex="0">
+                                            SelectionChanged="OnAdvancedModelChanged">
                                             <ComboBoxItem x:Uid="RealtimeWhisperModelOption" Tag="gpt-realtime-whisper" />
                                             <ComboBoxItem x:Uid="MiniTranscribeModelOption" Tag="gpt-4o-mini-transcribe" />
                                             <ComboBoxItem x:Uid="TranscribeModelOption" Tag="gpt-4o-transcribe" />

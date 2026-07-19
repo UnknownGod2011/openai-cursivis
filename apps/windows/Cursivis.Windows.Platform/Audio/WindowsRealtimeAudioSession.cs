@@ -9,10 +9,17 @@ namespace Cursivis.Windows.Platform.Audio;
 
 public sealed class WindowsRealtimeAudioSessionFactory : IRealtimeAudioSessionFactory
 {
+    private readonly int _deviceNumber;
+
+    public WindowsRealtimeAudioSessionFactory(int deviceNumber = 0)
+    {
+        _deviceNumber = deviceNumber;
+    }
+
     public Task<IRealtimeAudioSession> OpenAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IRealtimeAudioSession>(new WindowsRealtimeAudioSession());
+        return Task.FromResult<IRealtimeAudioSession>(new WindowsRealtimeAudioSession(_deviceNumber));
     }
 }
 
@@ -39,7 +46,7 @@ internal sealed class WindowsRealtimeAudioSession : IRealtimeAudioSession
     private int _readerStarted;
     private int _disposed;
 
-    public WindowsRealtimeAudioSession()
+    public WindowsRealtimeAudioSession(int deviceNumber)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -71,7 +78,7 @@ internal sealed class WindowsRealtimeAudioSession : IRealtimeAudioSession
 
         _capture = new WaveInEvent
         {
-            DeviceNumber = 0,
+            DeviceNumber = deviceNumber,
             WaveFormat = format,
             BufferMilliseconds = CaptureBufferMilliseconds,
             NumberOfBuffers = 4,
