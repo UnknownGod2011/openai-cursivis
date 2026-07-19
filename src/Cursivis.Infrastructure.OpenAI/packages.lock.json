@@ -131,8 +131,8 @@
       "cursivis.application": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Contracts": "[0.1.0, )",
-          "Cursivis.Domain": "[0.1.0, )"
+          "Cursivis.Contracts": "[1.0.0, )",
+          "Cursivis.Domain": "[1.0.0, )"
         }
       },
       "cursivis.contracts": {

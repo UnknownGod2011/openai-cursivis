@@ -188,9 +188,17 @@
       "cursivis.domain": {
         "type": "Project"
       },
+      "cursivis.infrastructure.browserbridge": {
+        "type": "Project",
+        "dependencies": {
+          "Cursivis.Application": "[1.0.0, )",
+          "Cursivis.Contracts": "[1.0.0, )"
+        }
+      },
       "cursivis.infrastructure.storage": {
         "type": "Project",
         "dependencies": {
+          "Cursivis.Application": "[1.0.0, )",
           "Cursivis.Domain": "[1.0.0, )"
         }
       },
@@ -203,6 +211,13 @@
           "System.Security.Cryptography.ProtectedData": "[8.0.0, )",
           "System.Threading.AccessControl": "[8.0.0, )"
         }
+      }
+    },
+    "net8.0-windows10.0.19041/win-x64": {
+      "System.Threading.AccessControl": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "cIed5+HuYz+eV9yu9TH95zPkqmm1J9Qps9wxjB335sU8tsqc2kGdlTEH9FZzZeCS8a7mNSEsN8ZkyhQp1gfdEw=="
       }
     }
   }
