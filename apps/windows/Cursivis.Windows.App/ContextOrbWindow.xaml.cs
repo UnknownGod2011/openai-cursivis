@@ -273,7 +273,7 @@ public sealed partial class ContextOrbWindow : Window
         Compositor compositor = visual.Compositor;
         Vector3KeyFrameAnimation pulse = compositor.CreateVector3KeyFrameAnimation();
         pulse.InsertKeyFrame(0, Vector3.One);
-        pulse.InsertKeyFrame(0.5f, new Vector3(1.035f, 1.035f, 1));
+        pulse.InsertKeyFrame(0.5f, new Vector3(1.018f, 1.018f, 1));
         pulse.InsertKeyFrame(1, Vector3.One);
         pulse.Duration = TimeSpan.FromMilliseconds(state == OrbPresentationState.Listening ? 760 : 1100);
         pulse.IterationBehavior = AnimationIterationBehavior.Forever;
@@ -461,7 +461,9 @@ public sealed partial class ContextOrbWindow : Window
     {
         var shapes = new List<OverlayRegionShape>
         {
-            new(68, 68, 184, 184, isEllipse: true),
+            // Match the largest Live-only pulse, leaving no unused transparent
+            // swap-chain area that can present as a dark halo on some drivers.
+            new(75, 75, 170, 170, isEllipse: true),
         };
 
         if (IdleControlBar.Visibility == Visibility.Visible)
@@ -534,17 +536,6 @@ public sealed partial class ContextOrbWindow : Window
             AutomationProperties.SetName(button, option.Label);
             ToolTipService.SetToolTip(button, option.Label);
         }
-    }
-
-    private static string CompactOperationLabel(string label)
-    {
-        string compact = label
-            .Replace("Make professional", "Professional", StringComparison.OrdinalIgnoreCase)
-            .Replace("Extract key points", "Key points", StringComparison.OrdinalIgnoreCase)
-            .Replace("Turn into tasks", "To tasks", StringComparison.OrdinalIgnoreCase)
-            .Replace("Find security issues", "Security", StringComparison.OrdinalIgnoreCase)
-            .Replace("Explain user interface", "Explain UI", StringComparison.OrdinalIgnoreCase);
-        return compact.Length <= 18 ? compact : $"{compact[..15]}…";
     }
 
     private static TextBlock CreateOptionLabel(string label) => new()
