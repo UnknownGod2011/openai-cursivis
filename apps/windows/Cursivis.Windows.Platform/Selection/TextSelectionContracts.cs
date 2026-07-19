@@ -39,3 +39,15 @@ public interface ITextSelectionReader
 {
     Task<TextSelectionReadResult> ReadAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// A reader that can bind a capture to the foreground HWND observed before the
+/// Cursivis overlay appears. Clipboard readers use this to avoid sending a copy
+/// chord to a window that changed during capture.
+/// </summary>
+public interface IForegroundBoundTextSelectionReader : ITextSelectionReader
+{
+    Task<TextSelectionReadResult> ReadForWindowAsync(
+        nint sourceWindowHandle,
+        CancellationToken cancellationToken = default);
+}

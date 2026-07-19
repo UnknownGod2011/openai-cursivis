@@ -35,7 +35,7 @@
                 MaxWidth="920"
                 HorizontalAlignment="Stretch"
                 Spacing="20">
-                <controls:SettingsSectionHeader x:Uid="OverviewSectionHeader" />
+                <controls:SettingsSectionHeader x:Name="OverviewHeader" x:Uid="OverviewSectionHeader" />
 
                 <controls:SettingsCard x:Uid="OverviewWelcomeCard" IconGlyph="&#xE77B;">
                     <controls:SettingsCard.Body>
@@ -83,9 +83,9 @@
                 <controls:SettingsCard x:Uid="OverviewReadinessCard" IconGlyph="&#xE9D9;">
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="10">
-                            <controls:StatusIndicator x:Uid="OverviewOpenAiStatus" Glyph="&#xE946;" />
+                            <controls:StatusIndicator x:Name="OpenAiStatus" x:Uid="OverviewOpenAiStatus" Glyph="&#xE946;" />
                             <controls:StatusIndicator x:Uid="OverviewBrowserStatus" Glyph="&#xE711;" />
-                            <controls:StatusIndicator x:Uid="OverviewHotkeyStatus" Glyph="&#xE7E6;" />
+                            <controls:StatusIndicator x:Name="HotkeyStatus" x:Uid="OverviewHotkeyStatus" Glyph="&#xE7E6;" />
                             <controls:StatusIndicator x:Uid="OverviewVoiceStatus" Glyph="&#xE720;" />
                         </StackPanel>
                     </controls:SettingsCard.Body>

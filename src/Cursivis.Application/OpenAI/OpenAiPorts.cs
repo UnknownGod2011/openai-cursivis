@@ -46,6 +46,17 @@ public interface IRealtimeGateway
         CancellationToken cancellationToken = default);
 }
 
+public sealed class RealtimeGatewayException : InvalidOperationException
+{
+    public RealtimeGatewayException(OpenAiFailure failure, Exception? innerException = null)
+        : base(failure?.SafeMessage, innerException)
+    {
+        Failure = failure ?? throw new ArgumentNullException(nameof(failure));
+    }
+
+    public OpenAiFailure Failure { get; }
+}
+
 public interface IRealtimeSession : IAsyncDisposable
 {
     IAsyncEnumerable<RealtimeServerEvent> ReadEventsAsync(CancellationToken cancellationToken = default);

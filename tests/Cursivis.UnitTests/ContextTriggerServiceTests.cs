@@ -4,6 +4,7 @@ using Cursivis.Contracts.OpenAI;
 using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
+using Cursivis.Domain.QuickTasks;
 
 namespace Cursivis.UnitTests;
 
@@ -24,6 +25,7 @@ public sealed class ContextTriggerServiceTests
 
         Assert.Equal(ContextTriggerExecutionStatus.Completed, result.Status);
         Assert.Equal("A concise reply.", result.Result?.FinalContent);
+        Assert.Equal("Drafting reply", result.Result?.OperationLabel);
         Assert.Equal("gpt-5.6-terra", gateway.LastRequest?.Model);
         Assert.Equal("cursivis_smart_result", gateway.LastRequest?.SchemaName);
         Assert.Contains("additionalProperties", gateway.LastRequest?.JsonSchema, StringComparison.Ordinal);
@@ -157,12 +159,101 @@ public sealed class ContextTriggerServiceTests
     }
 
     [Fact]
+    public async Task GenerateGuidedOptionsAsync_UsesTypedContextSpecificOptions()
+    {
+        var gateway = new StubResponsesGateway(GuidedOptionsJson());
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+
+        GuidedOptionsExecutionResult result = await service.GenerateGuidedOptionsAsync(
+            CreateInput(),
+            ModelCatalog.Balanced,
+            CancellationToken.None);
+
+        Assert.Equal(ContextTriggerExecutionStatus.Completed, result.Status);
+        Assert.Equal(3, result.Options?.Count);
+        Assert.Equal("draft_reply", result.Options?[0].Id);
+        Assert.Contains("distinct, high-value", gateway.LastRequest?.SystemInstruction, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("cursivis_guided_options", gateway.LastRequest?.SchemaName);
+        Assert.Equal(CreateContext().Fingerprint.Value, gateway.LastRequest?.OperationId);
+    }
+
+    [Fact]
+    public async Task ExecuteGuidedInstructionAsync_ReusesContextAndOptionInstruction()
+    {
+        var gateway = new StubResponsesGateway(SuccessJson(confidence: 0.95));
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+        ContextExecutionInput input = CreateInput();
+        var option = new GuidedOption(
+            "draft_reply",
+            "Draft reply",
+            "Draft a concise reply that answers the message and preserves its requested tone.");
+
+        ContextTriggerExecutionResult result = await service.ExecuteGuidedInstructionAsync(
+            input,
+            option,
+            ModelCatalog.Balanced,
+            CancellationToken.None);
+
+        Assert.Equal(ContextTriggerExecutionStatus.Completed, result.Status);
+        Assert.Contains("Draft reply", gateway.LastRequest?.UserContent, StringComparison.Ordinal);
+        Assert.Contains(option.Instruction, gateway.LastRequest?.UserContent, StringComparison.Ordinal);
+        Assert.Equal(input.Context.Fingerprint.Value, gateway.LastRequest?.OperationId);
+    }
+
+    [Fact]
     public void FromImage_MismatchedPayload_RejectsBeforeModelRequest()
     {
         ContextExecutionInput valid = CreateImageInput([1, 2, 3, 4]);
         var mismatched = new ContextImagePayload([4, 3, 2, 1], "image/png", 1, 1);
 
         Assert.Throws<ArgumentException>(() => ContextExecutionInput.FromImage(valid.Context, mismatched));
+    }
+
+    [Fact]
+    public async Task ExecuteQuickTaskAsync_ApprovedDefinition_UsesSameStandardResponsesPath()
+    {
+        var gateway = new StubResponsesGateway(SuccessJson(confidence: 0.95));
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+        var definition = new QuickTaskDefinition(
+            new QuickTaskId("fixture-task"),
+            "Fixture Task",
+            "Rewrite the selected context clearly while preserving every fact and stated requirement.",
+            QuickTaskContextType.Text,
+            QuickTaskOutputMode.ReplacementText,
+            mayProposeAction: false,
+            isExplicitlyApproved: true);
+
+        ContextTriggerExecutionResult execution = await service.ExecuteQuickTaskAsync(
+            CreateInput(),
+            definition,
+            ModelCatalog.Balanced);
+
+        Assert.Equal(ContextTriggerExecutionStatus.Completed, execution.Status);
+        Assert.Contains("approved_quick_task_instruction", gateway.LastRequest?.SystemInstruction, StringComparison.Ordinal);
+        Assert.Null(gateway.LastRequest?.Image);
+        Assert.Equal(SuggestedActionType.None, execution.Result?.SuggestedAction.Type);
+    }
+
+    [Fact]
+    public async Task ExecuteQuickTaskAsync_UnsupportedContext_RejectsBeforeProviderCall()
+    {
+        var gateway = new StubResponsesGateway(SuccessJson(confidence: 0.95));
+        var service = new ContextTriggerService(gateway, new FixedTimeProvider(Now));
+        var definition = new QuickTaskDefinition(
+            new QuickTaskId("image-only"),
+            "Image only",
+            "Describe only the explicit image capture accurately and return a concise visual analysis.",
+            QuickTaskContextType.Image,
+            QuickTaskOutputMode.Analysis,
+            mayProposeAction: false,
+            isExplicitlyApproved: true);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.ExecuteQuickTaskAsync(
+            CreateInput(),
+            definition,
+            ModelCatalog.Balanced));
+
+        Assert.Null(gateway.LastRequest);
     }
 
     private static ContextSnapshot CreateContext() => ContextSnapshot.FromText(
@@ -194,6 +285,7 @@ public sealed class ContextTriggerServiceTests
           "schemaVersion": 1,
           "contextType": "email",
           "intent": "reply",
+          "operationLabel": "Drafting reply",
           "confidence": {{confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           "finalContent": "A concise reply.",
           "suggestedAction": {
@@ -202,6 +294,29 @@ public sealed class ContextTriggerServiceTests
           },
           "riskHint": "low",
           "confirmationHint": "none"
+        }
+        """;
+
+    private static string GuidedOptionsJson() => """
+        {
+          "schemaVersion": 1,
+          "options": [
+            {
+              "id": "draft_reply",
+              "label": "Draft reply",
+              "instruction": "Draft a concise reply that answers the message and preserves its requested tone."
+            },
+            {
+              "id": "summarize_request",
+              "label": "Summarize request",
+              "instruction": "Summarize the requested actions, deadline, and relevant constraints in a compact list."
+            },
+            {
+              "id": "make_professional",
+              "label": "Make professional",
+              "instruction": "Rewrite the message in a concise professional tone while preserving its meaning."
+            }
+          ]
         }
         """;
 

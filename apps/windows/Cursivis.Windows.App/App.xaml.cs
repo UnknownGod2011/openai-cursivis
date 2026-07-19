@@ -26,14 +26,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.Activate();
             nint windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
             _runtime = await AppRuntime.CreateAsync(windowHandle);
-#if DEBUG
-            string? visualValidation = Environment.GetEnvironmentVariable("CURSIVIS_VISUAL_VALIDATION");
-            if (!string.IsNullOrWhiteSpace(visualValidation))
-            {
-                _window.AppWindow.Hide();
-                _runtime.ShowVisualValidation(visualValidation);
-            }
-#endif
+            (_window as MainWindow)?.RefreshRuntimeStatus();
         }
         catch (Exception exception)
         {

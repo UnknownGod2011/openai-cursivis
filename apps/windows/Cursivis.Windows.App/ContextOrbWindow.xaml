@@ -6,189 +6,192 @@
 
     <Grid
         x:Name="OverlayRoot"
+        Width="320"
+        Height="320"
         AutomationProperties.AutomationId="ContextOrb"
         AutomationProperties.LiveSetting="Polite"
-        Background="{ThemeResource OverlayShellBrush}">
+        Background="Transparent">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnCancelAcceleratorInvoked" />
         </Grid.KeyboardAccelerators>
 
-        <Border
-            x:Name="RootShell"
-            Padding="10,9"
-            Background="{ThemeResource OverlayHeaderBrush}"
-            BorderBrush="{ThemeResource OverlayBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="32">
-            <Border.Shadow>
-                <ThemeShadow />
-            </Border.Shadow>
+        <Canvas Width="320" Height="320">
+            <Button
+                x:Name="ActionChipTop"
+                Canvas.Left="108"
+                Canvas.Top="20"
+                Click="OnGuidedOperationClicked"
+                Style="{StaticResource OrbActionChipStyle}"
+                Visibility="Collapsed" />
+            <Button
+                x:Name="ActionChipUpperRight"
+                Canvas.Left="208"
+                Canvas.Top="82"
+                Click="OnGuidedOperationClicked"
+                Style="{StaticResource OrbActionChipStyle}"
+                Visibility="Collapsed" />
+            <Button
+                x:Name="ActionChipLowerRight"
+                Canvas.Left="208"
+                Canvas.Top="202"
+                Click="OnGuidedOperationClicked"
+                Style="{StaticResource OrbActionChipStyle}"
+                Visibility="Collapsed" />
+            <Button
+                x:Name="ActionChipLowerLeft"
+                Canvas.Left="8"
+                Canvas.Top="202"
+                Click="OnGuidedOperationClicked"
+                Style="{StaticResource OrbActionChipStyle}"
+                Visibility="Collapsed" />
+            <Button
+                x:Name="ActionChipUpperLeft"
+                Canvas.Left="8"
+                Canvas.Top="82"
+                Click="OnGuidedOperationClicked"
+                Style="{StaticResource OrbActionChipStyle}"
+                Visibility="Collapsed" />
 
-            <Grid RowSpacing="8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <Grid
-                        x:Name="DragSurface"
-                        Background="Transparent"
-                        ColumnSpacing="10"
-                        PointerPressed="OnDragSurfacePointerPressed">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="50" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Grid Width="48" Height="48" VerticalAlignment="Center">
-                            <Border
-                                x:Name="StateRing"
-                                Margin="1"
-                                BorderBrush="{ThemeResource OverlayMutedTextBrush}"
-                                BorderThickness="2"
-                                CornerRadius="23"
-                                Opacity="0.45" />
-                            <Grid x:Name="StateCore" Margin="6">
-                                <Border x:Name="IdleStateVisual" Background="{ThemeResource OrbIdleBrush}" CornerRadius="18" />
-                                <Border x:Name="ListeningStateVisual" Background="{ThemeResource OrbListeningBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="ThinkingStateVisual" Background="{ThemeResource OrbThinkingBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="GeneratingStateVisual" Background="{ThemeResource OrbGeneratingBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="SpeakingStateVisual" Background="{ThemeResource OrbSpeakingBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="GuidingStateVisual" Background="{ThemeResource OrbGuidingBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="ExecutingStateVisual" Background="{ThemeResource OrbExecutingBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="DoneStateVisual" Background="{ThemeResource OrbDoneBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="CancelledStateVisual" Background="{ThemeResource OrbCancelledBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <Border x:Name="ErrorStateVisual" Background="{ThemeResource OrbErrorBrush}" CornerRadius="18" Visibility="Collapsed" />
-                                <FontIcon
-                                    x:Name="StateIcon"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    FontSize="17"
-                                    Foreground="White"
-                                    Glyph="&#xE768;" />
-                            </Grid>
-                        </Grid>
-
-                        <StackPanel
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Ellipse
-                                    Width="6"
-                                    Height="6"
-                                    VerticalAlignment="Center"
-                                    Fill="{ThemeResource OverlayMutedTextBrush}" />
-                                <TextBlock
-                                    x:Name="StatusText"
-                                    MaxWidth="196"
-                                    FontSize="13"
-                                    FontWeight="SemiBold"
-                                    Foreground="{ThemeResource OverlayTextBrush}"
-                                    TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                            <TextBlock
-                                x:Name="DetailText"
-                                MaxWidth="208"
-                                FontSize="11"
-                                Foreground="{ThemeResource OverlayMutedTextBrush}"
-                                TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
+            <Grid
+                x:Name="RootShell"
+                Width="176"
+                Height="176"
+                Canvas.Left="72"
+                Canvas.Top="72">
+                <Border
+                    x:Name="StateRing"
+                    Width="166"
+                    Height="166"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BorderBrush="{ThemeResource OverlayHairlineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="83"
+                    Opacity="0.72">
+                    <Grid>
+                        <Border x:Name="IdleStateVisual" Background="{ThemeResource OrbIdleBrush}" CornerRadius="82" Opacity="0.14" />
+                        <Border x:Name="ListeningStateVisual" Background="{ThemeResource OrbListeningBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="ThinkingStateVisual" Background="{ThemeResource OrbThinkingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="GeneratingStateVisual" Background="{ThemeResource OrbGeneratingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="SpeakingStateVisual" Background="{ThemeResource OrbSpeakingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="GuidingStateVisual" Background="{ThemeResource OrbGuidingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="ExecutingStateVisual" Background="{ThemeResource OrbExecutingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="DoneStateVisual" Background="{ThemeResource OrbDoneBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
+                        <Border x:Name="CancelledStateVisual" Background="{ThemeResource OrbCancelledBrush}" CornerRadius="82" Opacity="0.18" Visibility="Collapsed" />
+                        <Border x:Name="ErrorStateVisual" Background="{ThemeResource OrbErrorBrush}" CornerRadius="82" Opacity="0.24" Visibility="Collapsed" />
                     </Grid>
-
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal"
-                        Spacing="6">
-                        <Button
-                            x:Name="MicrophoneButton"
-                            x:Uid="ContextOrbMicrophoneButton"
-                            AutomationProperties.AutomationId="ContextOrbMicrophone"
-                            Click="OnMicrophoneClicked"
-                            Style="{StaticResource OverlayIconButtonStyle}">
-                            <FontIcon FontSize="14" Glyph="&#xE720;" />
-                        </Button>
-                        <Button
-                            x:Uid="ContextOrbSettingsButton"
-                            AutomationProperties.AutomationId="ContextOrbSettings"
-                            Click="OnSettingsClicked"
-                            Style="{StaticResource OverlayIconButtonStyle}">
-                            <FontIcon FontSize="14" Glyph="&#xE713;" />
-                        </Button>
-                        <Button
-                            x:Name="CancelButton"
-                            x:Uid="ContextOrbCancelButton"
-                            AutomationProperties.AutomationId="ContextOrbCancel"
-                            Click="OnCancelClicked"
-                            Style="{StaticResource OverlayIconButtonStyle}">
-                            <FontIcon FontSize="13" Glyph="&#xE711;" />
-                        </Button>
-                    </StackPanel>
-                </Grid>
+                </Border>
 
                 <Border
-                    x:Name="GuidedPanel"
-                    Grid.Row="1"
-                    Padding="12"
-                    Background="{ThemeResource OverlayContentBrush}"
-                    BorderBrush="{ThemeResource OverlayBorderBrush}"
+                    x:Name="DragSurface"
+                    Width="118"
+                    Height="118"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource OrbCoreBrush}"
+                    BorderBrush="{ThemeResource OrbCoreBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="20"
-                    Visibility="Collapsed">
-                    <Grid RowSpacing="10">
+                    CornerRadius="59">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <Grid Margin="10,11,10,9">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="18" />
                         </Grid.RowDefinitions>
-                        <StackPanel Spacing="2">
-                            <TextBlock
-                                x:Uid="ContextOrbGuidedTitle"
-                                FontSize="14"
-                                FontWeight="SemiBold"
-                                Foreground="{ThemeResource OverlayTextBrush}" />
-                            <TextBlock
-                                x:Uid="ContextOrbGuidedSubtitle"
-                                FontSize="11"
-                                Foreground="{ThemeResource OverlayMutedTextBrush}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
 
-                        <Grid
-                            x:Name="GuidedOptionsGrid"
+                        <Border
+                            MinWidth="64"
+                            Height="19"
+                            HorizontalAlignment="Center"
+                            Background="{ThemeResource OrbBadgeBrush}"
+                            BorderBrush="{ThemeResource OrbCoreBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                                <FontIcon
+                                    x:Name="StateIcon"
+                                    FontSize="9"
+                                    Foreground="{ThemeResource OverlayMutedTextBrush}"
+                                    Glyph="&#xE768;" />
+                                <TextBlock
+                                    x:Name="StateText"
+                                    VerticalAlignment="Center"
+                                    FontSize="9.5"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ThemeResource OverlayTextBrush}"
+                                    Text="Idle" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock
+                            x:Name="StatusText"
                             Grid.Row="1"
-                            ColumnSpacing="7"
-                            RowSpacing="7" />
+                            MaxWidth="86"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource OverlayTextBrush}"
+                            Text="Ready"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="DetailText"
+                            Grid.Row="2"
+                            MaxWidth="88"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontSize="8"
+                            Foreground="{ThemeResource OverlayMutedTextBrush}"
+                            TextAlignment="Center"
+                            TextTrimming="CharacterEllipsis"
+                            Visibility="Collapsed" />
 
-                        <Grid Grid.Row="2" ColumnSpacing="7">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox
-                                x:Name="CustomTaskTextBox"
-                                x:Uid="ContextOrbCustomTaskTextBox"
-                                AutomationProperties.AutomationId="ContextOrbCustomTask"
-                                KeyDown="OnCustomTaskKeyDown"
-                                TextChanged="OnCustomTaskTextChanged" />
-                            <Button
-                                x:Name="RunCustomTaskButton"
-                                x:Uid="ContextOrbRunCustomTaskButton"
-                                Grid.Column="1"
-                                AutomationProperties.AutomationId="ContextOrbRunCustomTask"
-                                Click="OnRunCustomTaskClicked"
-                                Style="{StaticResource OverlayPrimaryPillButtonStyle}" />
-                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
-        </Border>
+
+            <StackPanel
+                x:Name="IdleControlBar"
+                Canvas.Left="119"
+                Canvas.Top="252"
+                Orientation="Horizontal"
+                Spacing="6">
+                <Button
+                    x:Name="MicrophoneButton"
+                    x:Uid="ContextOrbMicrophoneButton"
+                    AutomationProperties.AutomationId="ContextOrbMicrophone"
+                    Click="OnMicrophoneClicked"
+                    Style="{StaticResource OrbControlButtonStyle}">
+                    <FontIcon FontSize="11" Glyph="&#xE720;" />
+                </Button>
+                <Button
+                    x:Uid="ContextOrbSettingsButton"
+                    AutomationProperties.AutomationId="ContextOrbSettings"
+                    Click="OnSettingsClicked"
+                    Style="{StaticResource OrbControlButtonStyle}">
+                    <FontIcon FontSize="11" Glyph="&#xE713;" />
+                </Button>
+            </StackPanel>
+            <Button
+                x:Name="CancelButton"
+                x:Uid="ContextOrbCancelButton"
+                Canvas.Left="147"
+                Canvas.Top="252"
+                AutomationProperties.AutomationId="ContextOrbCancel"
+                Click="OnCancelClicked"
+                Style="{StaticResource OrbControlButtonStyle}"
+                Visibility="Collapsed">
+                <FontIcon FontSize="10" Glyph="&#xE711;" />
+            </Button>
+        </Canvas>
     </Grid>
 </Window>

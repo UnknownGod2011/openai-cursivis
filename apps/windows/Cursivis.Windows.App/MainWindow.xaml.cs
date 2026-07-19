@@ -14,4 +14,7 @@ public sealed partial class MainWindow : Window
         NativeWindowPositioner.FitAndCenter(AppWindow, 1180, 800);
         RootFrame.Content = new MainPage();
     }
+
+    internal void RefreshRuntimeStatus() =>
+        (RootFrame.Content as MainPage)?.RefreshRuntimeStatus();
 }

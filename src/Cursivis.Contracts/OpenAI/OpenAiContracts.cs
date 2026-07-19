@@ -79,6 +79,8 @@ public enum RealtimeClientEventKind
 public enum RealtimeServerEventKind
 {
     Connected,
+    SpeechStarted,
+    SpeechStopped,
     UserTranscriptDelta,
     UserTranscriptDone,
     AssistantTranscriptDelta,

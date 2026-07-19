@@ -132,6 +132,29 @@ public sealed class TransactionalHotkeyRegistrarTests
         Assert.Contains("ModifierOnly", exception.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("Ctrl+Alt+Y", HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x59u)]
+    [InlineData("Ctrl+Shift+F12", HotkeyModifiers.Control | HotkeyModifiers.Shift, 0x7Bu)]
+    [InlineData("Ctrl+Alt+Escape", HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x1Bu)]
+    public void ChordParser_ValidCanonicalChord_RoundTrips(
+        string value,
+        HotkeyModifiers modifiers,
+        uint virtualKey)
+    {
+        Assert.True(HotkeyChordParser.TryParse(value, out HotkeyChord chord));
+        Assert.Equal(modifiers, chord.Modifiers);
+        Assert.Equal(virtualKey, chord.VirtualKey);
+    }
+
+    [Theory]
+    [InlineData("Y")]
+    [InlineData("Ctrl+Foo+Y")]
+    [InlineData("Ctrl+Alt+Delete")]
+    public void ChordParser_InvalidChord_IsRejected(string value)
+    {
+        Assert.False(HotkeyChordParser.TryParse(value, out _));
+    }
+
     private sealed class FakeHotkeyStatePersister(List<string> events) : IHotkeyStatePersister
     {
         public bool FailNext { get; set; }
@@ -182,6 +205,15 @@ public sealed class TransactionalHotkeyRegistrarTests
             Registrations.Add(registrationId, chord);
             events.Add($"register:{registrationId}");
             return NativeHotkeyOperationResult.Success;
+        }
+
+        public NativeHotkeyOperationResult RegisterUnmodified(
+            nint windowHandle,
+            int registrationId,
+            uint virtualKey)
+        {
+            Assert.NotEqual(nint.Zero, windowHandle);
+            throw new NotSupportedException("This fake covers persisted modified chords only.");
         }
 
         public NativeHotkeyOperationResult Unregister(

@@ -22,6 +22,7 @@ public sealed partial class OpenAiResponsesGateway(
     private readonly IOpenAiCredentialSource _credentialSource = credentialSource
         ?? throw new ArgumentNullException(nameof(credentialSource));
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly OpenAiRetryPolicy _retryPolicy = new();
 
     public async Task<StructuredResponseResult> CreateStructuredResponseAsync(
         StructuredResponseRequest request,
@@ -33,7 +34,10 @@ public sealed partial class OpenAiResponsesGateway(
         try
         {
             return await _credentialSource.UseApiKeyAsync(
-                (apiKey, keyCancellationToken) => ExecuteAsync(apiKey, request, keyCancellationToken),
+                (apiKey, keyCancellationToken) => ExecuteWithRetryAsync(
+                    apiKey,
+                    request,
+                    keyCancellationToken),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OpenAiCredentialUnavailableException)
@@ -49,6 +53,29 @@ public sealed partial class OpenAiResponsesGateway(
                 OpenAiFailureKind.Cancelled,
                 "The OpenAI request was cancelled.",
                 false));
+        }
+    }
+
+    private async Task<StructuredResponseResult> ExecuteWithRetryAsync(
+        string apiKey,
+        StructuredResponseRequest request,
+        CancellationToken cancellationToken)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            StructuredResponseResult result = await ExecuteAsync(
+                apiKey,
+                request,
+                cancellationToken).ConfigureAwait(false);
+            if (!_retryPolicy.ShouldRetry(result.Failure, attempt))
+            {
+                return result;
+            }
+
+            await Task.Delay(
+                _retryPolicy.GetDelay(request.OperationId, attempt),
+                _timeProvider,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -241,9 +268,13 @@ public sealed partial class OpenAiResponsesGateway(
                 OpenAiFailureKind.Timeout,
                 "The OpenAI request timed out.",
                 true),
+            (int)HttpStatusCode.TooManyRequests when IsQuotaFailure(exception) => new(
+                OpenAiFailureKind.Quota,
+                "OpenAI quota or credits may be exhausted.",
+                false),
             (int)HttpStatusCode.TooManyRequests => new(
                 OpenAiFailureKind.RateLimit,
-                "OpenAI rate or usage limits prevented this request.",
+                "OpenAI is temporarily rate limiting this request.",
                 true),
             >= 500 => new(
                 OpenAiFailureKind.Network,
@@ -254,6 +285,15 @@ public sealed partial class OpenAiResponsesGateway(
                 "The OpenAI request failed.",
                 false),
         };
+    }
+
+    private static bool IsQuotaFailure(ClientResultException exception)
+    {
+        string message = exception.Message ?? string.Empty;
+        return message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("credit", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("billing", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsJsonObject(string value)

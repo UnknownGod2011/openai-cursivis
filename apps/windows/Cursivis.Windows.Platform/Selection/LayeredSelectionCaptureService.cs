@@ -46,7 +46,9 @@ public sealed class LayeredSelectionCaptureService : ISelectionCaptureService
             // Clipboard fallback must remain on the caller's STA. WinUI invokes this
             // service from its UI thread, where OLE clipboard and WinRT clipboard
             // operations are initialized and safe to use.
-            TextSelectionReadResult read = await reader.ReadAsync(cancellationToken);
+            TextSelectionReadResult read = reader is IForegroundBoundTextSelectionReader boundReader
+                ? await boundReader.ReadForWindowAsync(initial.WindowHandle, cancellationToken)
+                : await reader.ReadAsync(cancellationToken);
             if (read.Status == TextSelectionReadStatus.Cancelled)
             {
                 return SelectionCaptureResult.Failed(

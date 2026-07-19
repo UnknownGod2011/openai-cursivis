@@ -5,18 +5,39 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace Cursivis.Windows.Platform.Selection;
 
-public sealed class WindowsProtectedClipboardSelectionReader : ITextSelectionReader
+public sealed class WindowsProtectedClipboardSelectionReader : IForegroundBoundTextSelectionReader
 {
-    private const uint InputKeyboard = 1;
-    private const uint KeyEventKeyUp = 0x0002;
     private const ushort VirtualKeyControl = 0x11;
     private const ushort VirtualKeyC = 0x43;
-    private static readonly TimeSpan ClipboardTimeout = TimeSpan.FromMilliseconds(750);
+    private static readonly TimeSpan ClipboardTimeout = TimeSpan.FromMilliseconds(500);
+    private readonly IWindowsKeyboardInputSender _keyboardInput;
+
+    public WindowsProtectedClipboardSelectionReader()
+        : this(new WindowsKeyboardInputSender())
+    {
+    }
+
+    internal WindowsProtectedClipboardSelectionReader(IWindowsKeyboardInputSender keyboardInput)
+    {
+        _keyboardInput = keyboardInput ?? throw new ArgumentNullException(nameof(keyboardInput));
+    }
 
     public async Task<TextSelectionReadResult> ReadAsync(
         CancellationToken cancellationToken = default)
+        => await ReadForWindowAsync(nint.Zero, cancellationToken).ConfigureAwait(false);
+
+    public async Task<TextSelectionReadResult> ReadForWindowAsync(
+        nint sourceWindowHandle,
+        CancellationToken cancellationToken = default)
     {
         EnsureWindows();
+        if (sourceWindowHandle != nint.Zero && GetForegroundWindow() != sourceWindowHandle)
+        {
+            return Failed(
+                TextSelectionReadStatus.Unavailable,
+                "The source application changed before the selection could be copied.");
+        }
+
         uint baselineSequence = GetClipboardSequenceNumber();
         IDataObject? original = CaptureOriginalClipboard();
         uint copiedSequence = 0;
@@ -33,6 +54,16 @@ public sealed class WindowsProtectedClipboardSelectionReader : ITextSelectionRea
         Clipboard.ContentChanged += OnClipboardChanged;
         try
         {
+            // The foreground check immediately precedes SendInput. It prevents
+            // Ctrl+C from being delivered to a new foreground app if a user
+            // changes windows during the short UIA-to-clipboard fallback.
+            if (sourceWindowHandle != nint.Zero && GetForegroundWindow() != sourceWindowHandle)
+            {
+                return Failed(
+                    TextSelectionReadStatus.Unavailable,
+                    "The source application changed before the selection could be copied.");
+            }
+
             if (!SendCopyChord())
             {
                 return Failed(TextSelectionReadStatus.Unavailable, "Windows could not send the copy command.");
@@ -98,17 +129,8 @@ public sealed class WindowsProtectedClipboardSelectionReader : ITextSelectionRea
         }
     }
 
-    private static bool SendCopyChord()
-    {
-        Input[] inputs =
-        [
-            Input.KeyDown(VirtualKeyControl),
-            Input.KeyDown(VirtualKeyC),
-            Input.KeyUp(VirtualKeyC),
-            Input.KeyUp(VirtualKeyControl),
-        ];
-        return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>()) == inputs.Length;
-    }
+    private bool SendCopyChord() =>
+        _keyboardInput.TrySendChord(VirtualKeyControl, VirtualKeyC);
 
     private static TextSelectionReadResult Failed(TextSelectionReadStatus status, string detail) =>
         TextSelectionReadResult.Failed(status, ContextSource.ProtectedClipboard, detail);
@@ -121,50 +143,11 @@ public sealed class WindowsProtectedClipboardSelectionReader : ITextSelectionRea
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Input
-    {
-        public uint Type;
-        public InputUnion Data;
-
-        public static Input KeyDown(ushort virtualKey) => new()
-        {
-            Type = InputKeyboard,
-            Data = new InputUnion { Keyboard = new KeyboardInput { VirtualKey = virtualKey } },
-        };
-
-        public static Input KeyUp(ushort virtualKey) => new()
-        {
-            Type = InputKeyboard,
-            Data = new InputUnion
-            {
-                Keyboard = new KeyboardInput { VirtualKey = virtualKey, Flags = KeyEventKeyUp },
-            },
-        };
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion
-    {
-        [FieldOffset(0)]
-        public KeyboardInput Keyboard;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KeyboardInput
-    {
-        public ushort VirtualKey;
-        public ushort ScanCode;
-        public uint Flags;
-        public uint Time;
-        public nuint ExtraInfo;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint inputCount, Input[] inputs, int inputSize);
-
     [DllImport("user32.dll")]
     private static extern uint GetClipboardSequenceNumber();
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("ole32.dll")]
     private static extern int OleGetClipboard([MarshalAs(UnmanagedType.Interface)] out IDataObject? dataObject);

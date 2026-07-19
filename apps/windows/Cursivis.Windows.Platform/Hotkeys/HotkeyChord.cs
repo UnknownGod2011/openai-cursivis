@@ -128,3 +128,56 @@ public readonly record struct HotkeyChord
         };
     }
 }
+
+public static class HotkeyChordParser
+{
+    public static bool TryParse(string? value, out HotkeyChord chord)
+    {
+        chord = default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string[] parts = value.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+        {
+            return false;
+        }
+
+        HotkeyModifiers modifiers = HotkeyModifiers.None;
+        foreach (string part in parts[..^1])
+        {
+            HotkeyModifiers modifier = part.ToUpperInvariant() switch
+            {
+                "CTRL" or "CONTROL" => HotkeyModifiers.Control,
+                "ALT" => HotkeyModifiers.Alt,
+                "SHIFT" => HotkeyModifiers.Shift,
+                "WIN" or "WINDOWS" => HotkeyModifiers.Windows,
+                _ => HotkeyModifiers.None,
+            };
+            if (modifier == HotkeyModifiers.None || modifiers.HasFlag(modifier))
+            {
+                return false;
+            }
+
+            modifiers |= modifier;
+        }
+
+        string key = parts[^1].ToUpperInvariant();
+        uint virtualKey = key.Length == 1 && char.IsAsciiLetterOrDigit(key[0])
+            ? key[0]
+            : key == "ESCAPE"
+                ? 0x1B
+                : key.StartsWith('F') && uint.TryParse(key[1..], out uint function) && function is >= 1 and <= 24
+                    ? 0x6F + function
+                    : 0;
+        if (HotkeyChord.Validate(modifiers, virtualKey) != HotkeyChordValidationCode.Valid)
+        {
+            return false;
+        }
+
+        chord = new HotkeyChord(modifiers, virtualKey);
+        return true;
+    }
+}

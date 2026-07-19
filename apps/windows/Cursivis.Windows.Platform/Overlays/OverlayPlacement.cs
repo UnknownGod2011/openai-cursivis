@@ -58,6 +58,56 @@ public readonly record struct OverlayRectangle
     public int Bottom => checked(Y + Height);
 }
 
+/// <summary>
+/// Describes one logical, client-coordinate portion of a shaped overlay HWND.
+/// The platform layer scales the shape for the window's current monitor.
+/// </summary>
+public readonly record struct OverlayRegionShape
+{
+    public OverlayRegionShape(
+        int x,
+        int y,
+        int width,
+        int height,
+        int cornerRadius = 0,
+        bool isEllipse = false)
+    {
+        if (width <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width));
+        }
+
+        if (height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(height));
+        }
+
+        if (cornerRadius < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(cornerRadius));
+        }
+
+        X = x;
+        Y = y;
+        Width = width;
+        Height = height;
+        CornerRadius = cornerRadius;
+        IsEllipse = isEllipse;
+    }
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public int Width { get; }
+
+    public int Height { get; }
+
+    public int CornerRadius { get; }
+
+    public bool IsEllipse { get; }
+}
+
 public static class OverlayPlacementCalculator
 {
     public static OverlayRectangle PlaceNearPoint(
@@ -116,5 +166,50 @@ public static class OverlayPlacementCalculator
             workArea,
             gap: 14,
             margin);
+    }
+}
+
+public static class OverlayResizeCalculator
+{
+    public static OverlayRectangle Clamp(
+        OverlayRectangle requested,
+        OverlayRectangle previous,
+        OverlayRectangle workArea,
+        OverlaySize minimumSize,
+        int margin = 12)
+    {
+        if (margin < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(margin));
+        }
+
+        int availableWidth = Math.Max(1, workArea.Width - (margin * 2));
+        int availableHeight = Math.Max(1, workArea.Height - (margin * 2));
+        int minimumWidth = Math.Min(minimumSize.Width, availableWidth);
+        int minimumHeight = Math.Min(minimumSize.Height, availableHeight);
+        int width = Math.Clamp(requested.Width, minimumWidth, availableWidth);
+        int height = Math.Clamp(requested.Height, minimumHeight, availableHeight);
+        int x = requested.X;
+        int y = requested.Y;
+
+        if (width != requested.Width && requested.X != previous.X)
+        {
+            x += requested.Width - width;
+        }
+
+        if (height != requested.Height && requested.Y != previous.Y)
+        {
+            y += requested.Height - height;
+        }
+
+        x = Math.Clamp(
+            x,
+            workArea.X + margin,
+            Math.Max(workArea.X + margin, workArea.Right - width - margin));
+        y = Math.Clamp(
+            y,
+            workArea.Y + margin,
+            Math.Max(workArea.Y + margin, workArea.Bottom - height - margin));
+        return new OverlayRectangle(x, y, width, height);
     }
 }

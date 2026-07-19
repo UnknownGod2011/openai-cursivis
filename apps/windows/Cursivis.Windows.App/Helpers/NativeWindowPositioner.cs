@@ -66,6 +66,47 @@ internal static class NativeWindowPositioner
         return OverlayPlacementCalculator.Clamp(requested, GetWorkArea(monitor));
     }
 
+    public static OverlayRectangle GetAdjacentPlacement(
+        nint windowHandle,
+        int logicalWidth,
+        int logicalHeight,
+        OverlayRectangle anchor,
+        int gap = 12,
+        int margin = 12)
+    {
+        var anchorCenter = new Point
+        {
+            X = anchor.X + (anchor.Width / 2),
+            Y = anchor.Y + (anchor.Height / 2),
+        };
+        nint monitor = MonitorFromPoint(anchorCenter, MonitorDefaultToNearest);
+        double scale = GetMonitorScale(monitor, windowHandle);
+        OverlayRectangle workArea = GetWorkArea(monitor);
+        int width = Math.Min(
+            Math.Max(1, (int)Math.Round(logicalWidth * scale)),
+            Math.Max(1, workArea.Width - (margin * 2)));
+        int height = Math.Min(
+            Math.Max(1, (int)Math.Round(logicalHeight * scale)),
+            Math.Max(1, workArea.Height - (margin * 2)));
+
+        int x = anchor.Right + gap;
+        if (x + width > workArea.Right - margin)
+        {
+            x = anchor.X - width - gap;
+        }
+
+        int y = anchor.Y + ((anchor.Height - height) / 2);
+        x = Math.Clamp(
+            x,
+            workArea.X + margin,
+            Math.Max(workArea.X + margin, workArea.Right - width - margin));
+        y = Math.Clamp(
+            y,
+            workArea.Y + margin,
+            Math.Max(workArea.Y + margin, workArea.Bottom - height - margin));
+        return new OverlayRectangle(x, y, width, height);
+    }
+
     public static OverlayRectangle ClampCurrentPlacement(
         nint windowHandle,
         OverlayRectangle current)

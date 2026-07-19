@@ -3,6 +3,7 @@ using Cursivis.Contracts.OpenAI;
 using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
+using Cursivis.Domain.QuickTasks;
 
 namespace Cursivis.Application.Context;
 
@@ -120,6 +121,26 @@ public interface ITextInsertionService
         CancellationToken cancellationToken = default);
 }
 
+public enum TextUndoStatus
+{
+    Undone,
+    StaleTarget,
+    UnsupportedTarget,
+    Cancelled,
+    Failed,
+}
+
+public sealed record TextUndoResult(
+    TextUndoStatus Status,
+    string SafeDetail);
+
+public interface ITextUndoService
+{
+    Task<TextUndoResult> UndoAsync(
+        ContextSnapshot expectedContext,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed class ContextImagePayload
 {
     public const int MaximumEncodedBytes = 10 * 1024 * 1024;
@@ -229,6 +250,55 @@ public sealed record ContextTriggerExecutionResult(
     ModelIdentifier Model,
     TimeSpan Duration);
 
+public sealed record GuidedOption
+{
+    public const int MaximumDynamicOptions = 4;
+
+    public GuidedOption(string id, string label, string instruction, bool isCustomTask = false)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id.Length > 32)
+        {
+            throw new ArgumentException("A guided option id is required and must be compact.", nameof(id));
+        }
+
+        if (string.IsNullOrWhiteSpace(label) || label.Trim().Length is < 2 or > 28)
+        {
+            throw new ArgumentException("A guided option label must be between 2 and 28 characters.", nameof(label));
+        }
+
+        if (!isCustomTask && (string.IsNullOrWhiteSpace(instruction) || instruction.Trim().Length is < 12 or > 1200))
+        {
+            throw new ArgumentException("A guided option instruction must be between 12 and 1,200 characters.", nameof(instruction));
+        }
+
+        Id = id.Trim();
+        Label = label.Trim();
+        Instruction = instruction?.Trim() ?? string.Empty;
+        IsCustomTask = isCustomTask;
+    }
+
+    public string Id { get; }
+
+    public string Label { get; }
+
+    public string Instruction { get; }
+
+    public bool IsCustomTask { get; }
+
+    public static GuidedOption CustomTask { get; } = new(
+        "custom_task",
+        "Custom task",
+        string.Empty,
+        isCustomTask: true);
+}
+
+public sealed record GuidedOptionsExecutionResult(
+    ContextTriggerExecutionStatus Status,
+    IReadOnlyList<GuidedOption>? Options,
+    OpenAiFailure? Failure,
+    ModelIdentifier Model,
+    TimeSpan Duration);
+
 public interface IContextTriggerService
 {
     Task<ContextTriggerExecutionResult> ExecuteAsync(
@@ -240,6 +310,23 @@ public interface IContextTriggerService
         ContextExecutionInput input,
         GuidedOperation operation,
         string? customInstruction,
+        ModelIdentifier model,
+        CancellationToken cancellationToken = default);
+
+    Task<GuidedOptionsExecutionResult> GenerateGuidedOptionsAsync(
+        ContextExecutionInput input,
+        ModelIdentifier model,
+        CancellationToken cancellationToken = default);
+
+    Task<ContextTriggerExecutionResult> ExecuteGuidedInstructionAsync(
+        ContextExecutionInput input,
+        GuidedOption option,
+        ModelIdentifier model,
+        CancellationToken cancellationToken = default);
+
+    Task<ContextTriggerExecutionResult> ExecuteQuickTaskAsync(
+        ContextExecutionInput input,
+        QuickTaskDefinition definition,
         ModelIdentifier model,
         CancellationToken cancellationToken = default);
 }

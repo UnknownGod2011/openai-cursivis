@@ -62,11 +62,13 @@
                                     TextWrapping="Wrap" />
                             </StackPanel>
                             <Button
+                                x:Name="GenerateInstructionButton"
                                 x:Uid="GenerateInstructionButton"
                                 AutomationProperties.AutomationId="GenerateQuickTaskInstruction"
+                                Click="OnGenerateInstructionClicked"
                                 HorizontalAlignment="Left"
-                                IsEnabled="False" />
-                            <TextBlock x:Uid="GenerateInstructionUnavailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
+                                IsEnabled="True" />
+                            <TextBlock x:Uid="GenerateInstructionAvailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
@@ -103,9 +105,10 @@
                             <StackPanel Spacing="4">
                                 <TextBlock x:Name="QuickTaskOutputLabel" x:Uid="QuickTaskOutputLabel" FontWeight="SemiBold" />
                                 <ComboBox
+                                    x:Name="OutputModeComboBox"
                                     AutomationProperties.AutomationId="QuickTaskOutputMode"
                                     AutomationProperties.LabeledBy="{x:Bind QuickTaskOutputLabel}"
-                                    SelectedIndex="0">
+                                    SelectedIndex="{x:Bind ViewModel.OutputModeIndex, Mode=TwoWay}">
                                     <ComboBoxItem x:Uid="QuickTaskReplacementOutput" Tag="replacement_text" />
                                     <ComboBoxItem x:Uid="QuickTaskAnalysisOutput" Tag="analysis" />
                                     <ComboBoxItem x:Uid="QuickTaskStructuredOutput" Tag="structured_data" />
@@ -121,11 +124,18 @@
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
 
+                <controls:HotkeyRecorder
+                    x:Name="QuickTaskHotkeyRecorder"
+                    x:Uid="QuickTaskRecorder"
+                    CandidateCaptured="OnQuickTaskHotkeyCandidateCaptured"
+                    RecorderAutomationId="RecordQuickTaskFromQuickTaskPage" />
+
                 <controls:SettingsCard x:Uid="QuickTaskTestCard" IconGlyph="&#xE9D9;">
                     <controls:SettingsCard.Body>
                         <StackPanel Spacing="10">
                             <TextBlock x:Name="QuickTaskFixtureLabel" x:Uid="QuickTaskFixtureLabel" FontWeight="SemiBold" />
                             <TextBox
+                                x:Name="QuickTaskFixtureInput"
                                 x:Uid="QuickTaskFixtureInput"
                                 AutomationProperties.AutomationId="QuickTaskTestFixture"
                                 AutomationProperties.LabeledBy="{x:Bind QuickTaskFixtureLabel}"
@@ -134,14 +144,28 @@
                                 MinHeight="88"
                                 TextWrapping="Wrap" />
                             <Button
+                                x:Name="TestQuickTaskButton"
                                 x:Uid="TestQuickTaskButton"
                                 AutomationProperties.AutomationId="TestQuickTask"
+                                Click="OnTestQuickTaskClicked"
                                 HorizontalAlignment="Left"
-                                IsEnabled="False" />
-                            <TextBlock x:Uid="TestQuickTaskUnavailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
+                                IsEnabled="True" />
+                            <TextBlock x:Uid="TestQuickTaskAvailableHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
+                            <TextBox
+                                x:Name="QuickTaskTestResult"
+                                AutomationProperties.AutomationId="QuickTaskTestResult"
+                                IsReadOnly="True"
+                                MinHeight="72"
+                                TextWrapping="Wrap"
+                                Visibility="Collapsed" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>
+
+                <InfoBar
+                    x:Name="OperationInfo"
+                    IsClosable="False"
+                    IsOpen="False" />
 
                 <InfoBar
                     x:Name="ValidationInfo"
@@ -169,6 +193,7 @@
                     x:Uid="QuickTaskSaveState"
                     CanSave="False"
                     DiscardRequested="OnDiscardRequested"
+                    SaveRequested="OnSaveRequested"
                     IsDirty="False" />
             </StackPanel>
         </ScrollViewer>

@@ -79,4 +79,49 @@ public sealed class OverlayPlacementTests
 
         Assert.False(OverlayDismissalPolicy.ShouldDismiss(new OverlayPoint(20, 20), context));
     }
+
+    [Fact]
+    public void Resize_FromBottomRight_EnforcesMinimumAndKeepsOrigin()
+    {
+        var previous = new OverlayRectangle(300, 180, 612, 312);
+
+        OverlayRectangle result = OverlayResizeCalculator.Clamp(
+            new OverlayRectangle(300, 180, 420, 160),
+            previous,
+            new OverlayRectangle(0, 0, 1920, 1040),
+            new OverlaySize(516, 232));
+
+        Assert.Equal(new OverlayRectangle(300, 180, 516, 232), result);
+    }
+
+    [Fact]
+    public void Resize_FromTopLeft_EnforcesMinimumAndKeepsOppositeEdges()
+    {
+        var previous = new OverlayRectangle(300, 180, 612, 312);
+
+        OverlayRectangle result = OverlayResizeCalculator.Clamp(
+            new OverlayRectangle(520, 330, 392, 162),
+            previous,
+            new OverlayRectangle(0, 0, 1920, 1040),
+            new OverlaySize(516, 232));
+
+        Assert.Equal(396, result.X);
+        Assert.Equal(260, result.Y);
+        Assert.Equal(912, result.Right);
+        Assert.Equal(492, result.Bottom);
+    }
+
+    [Fact]
+    public void Resize_ClampsOversizedResultToMonitorWorkArea()
+    {
+        var previous = new OverlayRectangle(-1600, 40, 612, 312);
+
+        OverlayRectangle result = OverlayResizeCalculator.Clamp(
+            new OverlayRectangle(-1800, -100, 2200, 1400),
+            previous,
+            new OverlayRectangle(-1920, 0, 1920, 1040),
+            new OverlaySize(516, 232));
+
+        Assert.Equal(new OverlayRectangle(-1908, 12, 1896, 1016), result);
+    }
 }

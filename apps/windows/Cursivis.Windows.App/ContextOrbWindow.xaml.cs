@@ -1,17 +1,19 @@
 using System.Numerics;
+using Cursivis.Application.Context;
 using Cursivis.Application.Presentation;
 using Cursivis.Domain.Context;
-using Cursivis.Domain.Interaction;
 using Cursivis.Infrastructure.Storage.Persistence;
 using Cursivis.Windows.App.Helpers;
 using Cursivis.Windows.Platform.Overlays;
 using Microsoft.UI.Composition;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.ViewManagement;
 
@@ -19,30 +21,35 @@ namespace Cursivis.Windows.App;
 
 public sealed partial class ContextOrbWindow : Window
 {
-    private const int CompactLogicalWidth = 372;
-    private const int CompactLogicalHeight = 68;
-    private const int GuidedLogicalWidth = 448;
-    private const int GuidedLogicalHeight = 392;
-    private const int CornerRadius = 34;
+    private const int LogicalWidth = 320;
+    private const int LogicalHeight = 320;
+    private const int CornerRadius = 1;
+    private readonly TransparentWindowBackdrop _transparentBackdrop;
     private readonly NativeOverlayWindow _overlay;
+    private readonly InputNonClientPointerSource _nonClientPointerSource;
     private readonly OverlayPlacementStore _placementStore;
     private OverlayPoint? _placementPoint;
     private bool _userPlaced;
-    private int _logicalWidth = CompactLogicalWidth;
-    private int _logicalHeight = CompactLogicalHeight;
+    private GuidedOption[] _guidedOptions = [];
+    private bool _awaitingBorderlessFrame;
+    private int _borderlessFrames;
 
     public ContextOrbWindow()
     {
         InitializeComponent();
         Title = ResourceText.Get("ContextOrbWindowTitle");
+        _transparentBackdrop = new TransparentWindowBackdrop(this);
 
-        var presenter = OverlappedPresenter.Create();
+        var presenter = (OverlappedPresenter)AppWindow.Presenter;
         presenter.IsAlwaysOnTop = false;
         presenter.IsMaximizable = false;
         presenter.IsMinimizable = false;
         presenter.IsResizable = false;
         presenter.SetBorderAndTitleBar(false, false);
-        AppWindow.SetPresenter(presenter);
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(StatusText);
+        _nonClientPointerSource = InputNonClientPointerSource.GetForWindowId(AppWindow.Id);
+        _nonClientPointerSource.ExitedMoveSize += OnNativeMoveSizeExited;
 
         nint handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _overlay = new NativeOverlayWindow(handle, noActivate: true);
@@ -72,13 +79,33 @@ public sealed partial class ContextOrbWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
         ArgumentException.ThrowIfNullOrWhiteSpace(detail);
         SetGuidedPanelVisible(false);
+        DetailText.Visibility = Visibility.Collapsed;
         ApplyState(state, status, detail);
         ShowWithoutActivation();
     }
 
-    public void ShowGuidedOptions(ContextKind contextKind)
+    public void ShowLiveState(
+        OrbPresentationState state,
+        string status,
+        string detail,
+        float audioLevel)
     {
-        BuildGuidedOptions(GuidedOperationCatalog.For(contextKind));
+        ArgumentException.ThrowIfNullOrWhiteSpace(status);
+        ArgumentException.ThrowIfNullOrWhiteSpace(detail);
+        SetGuidedPanelVisible(false);
+        DetailText.Visibility = Visibility.Visible;
+        ApplyState(state, status, detail);
+        StateRing.Opacity = Math.Clamp(0.68 + (Math.Clamp(audioLevel, 0, 1) * 0.32), 0, 1);
+        if (!_overlay.IsVisible)
+        {
+            ShowWithoutActivation();
+        }
+    }
+
+    public void ShowGuidedOptions(IReadOnlyList<GuidedOption> dynamicOptions)
+    {
+        ArgumentNullException.ThrowIfNull(dynamicOptions);
+        BuildGuidedOptions(dynamicOptions);
         SetGuidedPanelVisible(true);
         ApplyState(
             OrbPresentationState.Guiding,
@@ -94,6 +121,8 @@ public sealed partial class ContextOrbWindow : Window
     public void Hide()
     {
         SetGuidedPanelVisible(false);
+        DetailText.Visibility = Visibility.Collapsed;
+        StateRing.Opacity = 0.72;
         _overlay.Hide();
     }
 
@@ -101,10 +130,15 @@ public sealed partial class ContextOrbWindow : Window
     {
         StatusText.Text = status.Trim();
         DetailText.Text = detail.Trim();
+        StateText.Text = ToStateLabel(state);
         StateIcon.Glyph = GetGlyph(state);
         MicrophoneButton.IsEnabled = state is OrbPresentationState.Idle or OrbPresentationState.Done;
         CancelButton.IsEnabled = state is not OrbPresentationState.Idle and not OrbPresentationState.Done;
+        bool idleControlsVisible = state is OrbPresentationState.Idle or OrbPresentationState.Done;
+        IdleControlBar.Visibility = idleControlsVisible ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.Visibility = idleControlsVisible ? Visibility.Collapsed : Visibility.Visible;
         SetStateVisual(state);
+        ApplyVisibleWindowRegion();
         AutomationProperties.SetName(OverlayRoot, $"Cursivis {status}. {detail}");
         UpdateMotion(state);
     }
@@ -117,29 +151,66 @@ public sealed partial class ContextOrbWindow : Window
             OverlayRectangle current = _overlay.GetBounds();
             bounds = NativeWindowPositioner.GetRestoredPlacement(
                 _overlay.WindowHandle,
-                _logicalWidth,
-                _logicalHeight,
+                LogicalWidth,
+                LogicalHeight,
                 new OverlayPoint(current.X, current.Y));
         }
         else if (_userPlaced && _placementPoint is OverlayPoint restored)
         {
             bounds = NativeWindowPositioner.GetRestoredPlacement(
                 _overlay.WindowHandle,
-                _logicalWidth,
-                _logicalHeight,
+                LogicalWidth,
+                LogicalHeight,
                 restored);
         }
         else
         {
             bounds = NativeWindowPositioner.GetNearCursorPlacement(
                 _overlay.WindowHandle,
-                _logicalWidth,
-                _logicalHeight);
+                LogicalWidth,
+                LogicalHeight);
         }
 
         AppWindow.Show(activateWindow: false);
         _overlay.Show(bounds, topmost: true, noActivate: true, CornerRadius);
+        _ = DispatcherQueue.TryEnqueue(_overlay.EnforceBorderlessStyle);
+        RequestBorderlessFramePass();
         StartEntranceAnimation();
+    }
+
+    private void RequestBorderlessFramePass()
+    {
+        if (_awaitingBorderlessFrame)
+        {
+            return;
+        }
+
+        _awaitingBorderlessFrame = true;
+        _borderlessFrames = 0;
+        CompositionTarget.Rendering += OnFirstOverlayFrame;
+    }
+
+    private void OnFirstOverlayFrame(object? sender, object args)
+    {
+        if (!_overlay.IsVisible)
+        {
+            FinishBorderlessFramePass();
+            return;
+        }
+
+        _overlay.EnforceBorderlessStyle();
+        _borderlessFrames = _overlay.HasBorderlessStyle ? _borderlessFrames + 1 : 0;
+        if (_borderlessFrames >= 2)
+        {
+            FinishBorderlessFramePass();
+        }
+    }
+
+    private void FinishBorderlessFramePass()
+    {
+        CompositionTarget.Rendering -= OnFirstOverlayFrame;
+        _awaitingBorderlessFrame = false;
+        _borderlessFrames = 0;
     }
 
     private void UpdateMotion(OrbPresentationState state)
@@ -167,7 +238,7 @@ public sealed partial class ContextOrbWindow : Window
         pulse.InsertKeyFrame(1, Vector3.One);
         pulse.Duration = TimeSpan.FromMilliseconds(state == OrbPresentationState.Listening ? 760 : 1100);
         pulse.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.CenterPoint = new Vector3(24, 24, 0);
+        visual.CenterPoint = new Vector3(83, 83, 0);
         visual.StartAnimation(nameof(Visual.Scale), pulse);
     }
 
@@ -188,21 +259,15 @@ public sealed partial class ContextOrbWindow : Window
         visual.StartAnimation(nameof(Visual.Opacity), animation);
     }
 
-    private async void OnDragSurfacePointerPressed(object sender, PointerRoutedEventArgs args)
+    private async void OnNativeMoveSizeExited(
+        InputNonClientPointerSource sender,
+        ExitedMoveSizeEventArgs args)
     {
-        if (!args.GetCurrentPoint(DragSurface).Properties.IsLeftButtonPressed)
-        {
-            return;
-        }
-
-        args.Handled = true;
-        _ = _overlay.ActivateForInteraction();
-        _overlay.BeginDrag();
         OverlayRectangle current = _overlay.GetBounds();
         OverlayRectangle clamped = NativeWindowPositioner.GetRestoredPlacement(
             _overlay.WindowHandle,
-            _logicalWidth,
-            _logicalHeight,
+            LogicalWidth,
+            LogicalHeight,
             new OverlayPoint(current.X, current.Y));
         _overlay.Show(clamped, topmost: true, noActivate: true, CornerRadius);
         _userPlaced = true;
@@ -230,26 +295,11 @@ public sealed partial class ContextOrbWindow : Window
 
     private void OnGuidedOperationClicked(object sender, RoutedEventArgs args)
     {
-        if (sender is Button { Tag: GuidedOperation operation })
+        if (sender is Button { Tag: GuidedOption option })
         {
             GuidedOperationRequested?.Invoke(
                 this,
-                new GuidedOperationRequestedEventArgs(operation, customInstruction: null));
-        }
-    }
-
-    private void OnRunCustomTaskClicked(object sender, RoutedEventArgs args) =>
-        RunCustomTask();
-
-    private void OnCustomTaskTextChanged(object sender, TextChangedEventArgs args) =>
-        RunCustomTaskButton.IsEnabled = !string.IsNullOrWhiteSpace(CustomTaskTextBox.Text);
-
-    private void OnCustomTaskKeyDown(object sender, KeyRoutedEventArgs args)
-    {
-        if (args.Key == VirtualKey.Enter && RunCustomTaskButton.IsEnabled)
-        {
-            args.Handled = true;
-            RunCustomTask();
+                new GuidedOperationRequestedEventArgs(option));
         }
     }
 
@@ -263,16 +313,27 @@ public sealed partial class ContextOrbWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        CompositionTarget.Rendering -= OnFirstOverlayFrame;
+        _awaitingBorderlessFrame = false;
         AppWindow.Changed -= OnAppWindowChanged;
+        _nonClientPointerSource.ExitedMoveSize -= OnNativeMoveSizeExited;
+        _nonClientPointerSource.ClearAllRegionRects();
         Closed -= OnClosed;
+        _transparentBackdrop.Dispose();
         _overlay.Dispose();
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        if (args.DidVisibilityChange && sender.IsVisible)
+        {
+            _ = DispatcherQueue.TryEnqueue(_overlay.EnforceBorderlessStyle);
+            RequestBorderlessFramePass();
+        }
+
         if (args.DidSizeChange)
         {
-            _overlay.UpdateRoundedRegion(CornerRadius);
+            ApplyVisibleWindowRegion();
         }
     }
 
@@ -313,83 +374,168 @@ public sealed partial class ContextOrbWindow : Window
         _ => throw new ArgumentOutOfRangeException(nameof(state)),
     };
 
-    private void BuildGuidedOptions(IReadOnlyList<GuidedOperation> operations)
+    private static string ToStateLabel(OrbPresentationState state) => state switch
     {
-        GuidedOptionsGrid.Children.Clear();
-        GuidedOptionsGrid.RowDefinitions.Clear();
-        GuidedOptionsGrid.ColumnDefinitions.Clear();
-        GuidedOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition());
-        GuidedOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition());
+        OrbPresentationState.Thinking => "Processing",
+        OrbPresentationState.Generating => "Generating",
+        OrbPresentationState.Guiding => "Guided",
+        OrbPresentationState.Executing => "Executing",
+        _ => state.ToString(),
+    };
 
-        GuidedOperation[] visible = operations
-            .Where(static operation => operation != GuidedOperation.CustomTask)
+    private void BuildGuidedOptions(IReadOnlyList<GuidedOption> dynamicOptions)
+    {
+        if (dynamicOptions.Count is < 3 or > GuidedOption.MaximumDynamicOptions ||
+            dynamicOptions.Any(static option => option.IsCustomTask))
+        {
+            throw new ArgumentException("Guided Mode requires three or four model-generated operations.", nameof(dynamicOptions));
+        }
+
+        _guidedOptions = dynamicOptions
+            .DistinctBy(static option => option.Id, StringComparer.OrdinalIgnoreCase)
+            .Concat([GuidedOption.CustomTask])
             .ToArray();
-        int rowCount = (visible.Length + 1) / 2;
-        for (int row = 0; row < rowCount; row++)
+        if (_guidedOptions.Length != dynamicOptions.Count + 1)
         {
-            GuidedOptionsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            throw new ArgumentException("Guided Mode options must use distinct ids.", nameof(dynamicOptions));
         }
 
-        for (int index = 0; index < visible.Length; index++)
-        {
-            GuidedOperation operation = visible[index];
-            var button = new Button
-            {
-                Content = ResourceText.Get($"GuidedOperation{operation}"),
-                Tag = operation,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["OverlayPillButtonStyle"],
-            };
-            AutomationProperties.SetAutomationId(button, $"GuidedOperation{operation}");
-            AutomationProperties.SetName(button, ResourceText.Get($"GuidedOperation{operation}"));
-            button.Click += OnGuidedOperationClicked;
-            Grid.SetRow(button, index / 2);
-            Grid.SetColumn(button, index % 2);
-            GuidedOptionsGrid.Children.Add(button);
-        }
+        ApplyGuidedOptions();
     }
 
     private void SetGuidedPanelVisible(bool visible)
     {
-        GuidedPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        _logicalWidth = visible ? GuidedLogicalWidth : CompactLogicalWidth;
-        _logicalHeight = visible ? GuidedLogicalHeight : CompactLogicalHeight;
+        foreach (Button button in GuidedActionButtons())
+        {
+            button.Visibility = visible && button.Tag is GuidedOption
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
         if (!visible)
         {
-            CustomTaskTextBox.Text = string.Empty;
+            _guidedOptions = [];
+        }
+    }
+
+    private void ApplyVisibleWindowRegion()
+    {
+        var shapes = new List<OverlayRegionShape>
+        {
+            new(68, 68, 184, 184, isEllipse: true),
+        };
+
+        if (IdleControlBar.Visibility == Visibility.Visible)
+        {
+            shapes.Add(new OverlayRegionShape(117, 250, 62, 30, cornerRadius: 15));
+        }
+
+        if (CancelButton.Visibility == Visibility.Visible)
+        {
+            shapes.Add(new OverlayRegionShape(145, 250, 30, 30, cornerRadius: 15));
+        }
+
+        AddGuidedChipRegion(ActionChipTop, 106, 18, shapes);
+        AddGuidedChipRegion(ActionChipUpperRight, 206, 80, shapes);
+        AddGuidedChipRegion(ActionChipLowerRight, 206, 200, shapes);
+        AddGuidedChipRegion(ActionChipLowerLeft, 6, 200, shapes);
+        AddGuidedChipRegion(ActionChipUpperLeft, 6, 80, shapes);
+        _overlay.SetLogicalRegionShapes(shapes);
+    }
+
+    private static void AddGuidedChipRegion(
+        Button button,
+        int x,
+        int y,
+        ICollection<OverlayRegionShape> shapes)
+    {
+        if (button.Visibility == Visibility.Visible)
+        {
+            shapes.Add(new OverlayRegionShape(x, y, 108, 40, cornerRadius: 20));
         }
     }
 
     private void FocusFirstGuidedControl()
     {
-        if (GuidedOptionsGrid.Children.FirstOrDefault() is Control first)
+        if (GuidedActionButtons().FirstOrDefault(
+                static button => button.Visibility == Visibility.Visible) is Control first)
         {
             _ = first.Focus(FocusState.Programmatic);
-            return;
         }
-
-        _ = CustomTaskTextBox.Focus(FocusState.Programmatic);
     }
 
-    private void RunCustomTask()
+    private Button[] GuidedActionButtons() =>
+    [
+        ActionChipTop,
+        ActionChipUpperRight,
+        ActionChipLowerRight,
+        ActionChipLowerLeft,
+        ActionChipUpperLeft,
+    ];
+
+    private void ApplyGuidedOptions()
     {
-        string instruction = CustomTaskTextBox.Text.Trim();
-        if (instruction.Length == 0)
+        Button[] buttons = GuidedActionButtons();
+        for (int index = 0; index < buttons.Length; index++)
         {
-            return;
+            Button button = buttons[index];
+            if (index >= _guidedOptions.Length)
+            {
+                button.Tag = null;
+                button.Content = string.Empty;
+                button.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            GuidedOption option = _guidedOptions[index];
+            button.Tag = option;
+            button.Content = CreateOptionLabel(option.Label);
+            button.Visibility = Visibility.Visible;
+            AutomationProperties.SetAutomationId(button, $"GuidedOption{option.Id}");
+            AutomationProperties.SetName(button, option.Label);
+            ToolTipService.SetToolTip(button, option.Label);
+        }
+    }
+
+    private static string CompactOperationLabel(string label)
+    {
+        string compact = label
+            .Replace("Make professional", "Professional", StringComparison.OrdinalIgnoreCase)
+            .Replace("Extract key points", "Key points", StringComparison.OrdinalIgnoreCase)
+            .Replace("Turn into tasks", "To tasks", StringComparison.OrdinalIgnoreCase)
+            .Replace("Find security issues", "Security", StringComparison.OrdinalIgnoreCase)
+            .Replace("Explain user interface", "Explain UI", StringComparison.OrdinalIgnoreCase);
+        return compact.Length <= 18 ? compact : $"{compact[..15]}…";
+    }
+
+    private static TextBlock CreateOptionLabel(string label) => new()
+    {
+        Text = label,
+        MaxLines = 2,
+        TextAlignment = TextAlignment.Center,
+        TextTrimming = TextTrimming.CharacterEllipsis,
+        TextWrapping = TextWrapping.Wrap,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    private static T? FindParent<T>(DependencyObject? source) where T : DependencyObject
+    {
+        while (source is not null)
+        {
+            if (source is T match)
+            {
+                return match;
+            }
+
+            source = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(source);
         }
 
-        GuidedOperationRequested?.Invoke(
-            this,
-            new GuidedOperationRequestedEventArgs(GuidedOperation.CustomTask, instruction));
+        return null;
     }
 }
 
 public sealed class GuidedOperationRequestedEventArgs(
-    GuidedOperation operation,
-    string? customInstruction) : EventArgs
+    GuidedOption option) : EventArgs
 {
-    public GuidedOperation Operation { get; } = operation;
-
-    public string? CustomInstruction { get; } = customInstruction;
+    public GuidedOption Option { get; } = option ?? throw new ArgumentNullException(nameof(option));
 }

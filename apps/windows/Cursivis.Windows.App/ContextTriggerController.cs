@@ -5,8 +5,10 @@ using Cursivis.Application.Presentation;
 using Cursivis.Domain.Context;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
+using Cursivis.Domain.QuickTasks;
 using Cursivis.Windows.App.Helpers;
 using Cursivis.Windows.Platform.Foreground;
+using Cursivis.Windows.Platform.Hotkeys;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Cursivis.Windows.App;
@@ -19,14 +21,20 @@ public sealed class ContextTriggerController : IDisposable
     private readonly IContextTriggerService _trigger;
     private readonly ISelectionReplacementService _replacement;
     private readonly ITextInsertionService _insertion;
+    private readonly ITextUndoService _undo;
     private readonly IResultClipboardService _clipboard;
     private readonly IForegroundWindowActivator _activator;
+    private readonly IForegroundWindowIdentityProvider _foreground;
+    private readonly IHotkeyInputSettler _inputSettler;
     private readonly ContextOrbWindow _orb;
     private readonly ContextResultWindow _resultWindow;
     private readonly OperationCancellationRegistry _operations = new();
     private readonly ContextInteractionSession _session = new();
     private readonly ResultAutoCopyCoordinator _autoCopy;
+    private readonly Stack<ContextSnapshot> _undoHistory = new();
     private readonly ModelIdentifier _model;
+    private IReadOnlyList<GuidedOption>? _guidedOptions;
+    private ContextFingerprint? _guidedOptionsFingerprint;
     private bool _disposed;
 
     public ContextTriggerController(
@@ -35,8 +43,11 @@ public sealed class ContextTriggerController : IDisposable
         IContextTriggerService trigger,
         ISelectionReplacementService replacement,
         ITextInsertionService insertion,
+        ITextUndoService undo,
         IResultClipboardService clipboard,
         IForegroundWindowActivator activator,
+        IForegroundWindowIdentityProvider foreground,
+        IHotkeyInputSettler inputSettler,
         ContextOrbWindow orb,
         ContextResultWindow resultWindow,
         ModelIdentifier model)
@@ -46,16 +57,18 @@ public sealed class ContextTriggerController : IDisposable
         _trigger = trigger ?? throw new ArgumentNullException(nameof(trigger));
         _replacement = replacement ?? throw new ArgumentNullException(nameof(replacement));
         _insertion = insertion ?? throw new ArgumentNullException(nameof(insertion));
+        _undo = undo ?? throw new ArgumentNullException(nameof(undo));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
         _autoCopy = new ResultAutoCopyCoordinator(_clipboard);
         _activator = activator ?? throw new ArgumentNullException(nameof(activator));
+        _foreground = foreground ?? throw new ArgumentNullException(nameof(foreground));
+        _inputSettler = inputSettler ?? throw new ArgumentNullException(nameof(inputSettler));
         _orb = orb ?? throw new ArgumentNullException(nameof(orb));
         _resultWindow = resultWindow ?? throw new ArgumentNullException(nameof(resultWindow));
         _model = model;
 
-        _resultWindow.CopyRequested += OnCopyRequested;
+        _resultWindow.UndoRequested += OnUndoRequested;
         _resultWindow.InsertRequested += OnInsertRequested;
-        _resultWindow.ReplaceRequested += OnReplaceRequested;
         _resultWindow.TakeActionRequested += OnTakeActionRequested;
         _resultWindow.MoreOptionsRequested += OnMoreOptionsRequested;
         _resultWindow.RefineRequested += OnMoreOptionsRequested;
@@ -76,6 +89,19 @@ public sealed class ContextTriggerController : IDisposable
         _ = RunSafelyAsync();
     }
 
+    public void InvokeQuickTask(QuickTaskDefinition definition)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(definition);
+        _ = RunQuickTaskSafelyAsync(definition);
+    }
+
+    public Task<ContextTriggerExecutionResult> ExecuteQuickTaskFixtureAsync(
+        ContextExecutionInput input,
+        QuickTaskDefinition definition,
+        CancellationToken cancellationToken = default) =>
+        _trigger.ExecuteQuickTaskAsync(input, definition, _model, cancellationToken);
+
     public void Cancel()
     {
         if (_disposed)
@@ -85,6 +111,7 @@ public sealed class ContextTriggerController : IDisposable
 
         _operations.CancelAll();
         _session.Clear();
+        ClearGuidedOptions();
         _resultWindow.Hide();
         _orb.ShowState(
             OrbPresentationState.Cancelled,
@@ -114,9 +141,8 @@ public sealed class ContextTriggerController : IDisposable
 
         _disposed = true;
         _operations.Dispose();
-        _resultWindow.CopyRequested -= OnCopyRequested;
+        _resultWindow.UndoRequested -= OnUndoRequested;
         _resultWindow.InsertRequested -= OnInsertRequested;
-        _resultWindow.ReplaceRequested -= OnReplaceRequested;
         _resultWindow.TakeActionRequested -= OnTakeActionRequested;
         _resultWindow.MoreOptionsRequested -= OnMoreOptionsRequested;
         _resultWindow.RefineRequested -= OnMoreOptionsRequested;
@@ -145,12 +171,155 @@ public sealed class ContextTriggerController : IDisposable
         }
     }
 
+    private async Task RunQuickTaskSafelyAsync(QuickTaskDefinition definition)
+    {
+        try
+        {
+            await RunQuickTaskAsync(definition);
+        }
+        catch (OperationCanceledException)
+        {
+            // The initiating cancellation path owns the visible state.
+        }
+        catch (ArgumentException)
+        {
+            _orb.Hide();
+            _resultWindow.ShowNotice(
+                ResourceText.Get("QuickTaskUnsupportedContextTitle"),
+                ResourceText.Get("QuickTaskUnsupportedContextMessage"),
+                InfoBarSeverity.Warning);
+        }
+        catch (Exception)
+        {
+            _orb.Hide();
+            _resultWindow.ShowFailure(
+                ResourceText.Get("ContextResultUnexpectedFailureTitle"),
+                ResourceText.Get("ContextResultUnexpectedFailureMessage"));
+        }
+    }
+
+    private async Task RunQuickTaskAsync(QuickTaskDefinition definition)
+    {
+        _operations.CancelAll();
+        Guid operationValue = Guid.NewGuid();
+        using OperationLease operation = _operations.Begin(operationValue);
+        _session.Clear();
+        ClearGuidedOptions();
+        _resultWindow.Hide();
+        ForegroundWindowIdentity? originalForeground = _foreground.GetCurrent();
+
+        _orb.ShowState(
+            OrbPresentationState.Thinking,
+            ResourceText.Get("ContextOrbCapturingStatus"),
+            ResourceText.Get("ContextOrbCancelHintText"));
+        await _inputSettler.WaitForModifiersReleasedAsync(operation.Token);
+        SelectionCaptureResult capture = await _capture.CaptureAsync(ContextLifetime, operation.Token);
+        ContextExecutionInput input;
+        if (capture.Status == SelectionCaptureStatus.Captured && capture.Context is not null)
+        {
+            input = ContextExecutionInput.FromText(capture.Context);
+        }
+        else if (capture.Status == SelectionCaptureStatus.NoSelection &&
+                 definition.SupportedContext.HasFlag(QuickTaskContextType.Image))
+        {
+            _orb.Hide();
+            RegionContextCaptureResult region = await _regionCapture.CaptureAsync(ContextLifetime, operation.Token);
+            if (region.Status == RegionContextCaptureStatus.Cancelled)
+            {
+                return;
+            }
+
+            if (region.Input is null)
+            {
+                throw new ArgumentException("The requested image context was unavailable.", nameof(definition));
+            }
+
+            input = region.Input;
+        }
+        else if (capture.Status == SelectionCaptureStatus.NoSelection &&
+                 definition.SupportedContext.HasFlag(QuickTaskContextType.Text))
+        {
+            _orb.Hide();
+            var inputWindow = new QuickTaskInputWindow(
+                definition.DisplayName,
+                _resultWindow.CurrentTheme);
+            string? typedText = await inputWindow.ShowAsync(operation.Token);
+            if (typedText is null)
+            {
+                RestoreForeground(originalForeground);
+                return;
+            }
+
+            TargetIdentity target = CreateTargetIdentity(originalForeground);
+            ContextSnapshot typedContext = ContextSnapshot.FromText(
+                ContextKind.Text,
+                ContextSource.DirectInput,
+                target,
+                typedText,
+                DateTimeOffset.UtcNow,
+                ContextLifetime);
+            input = ContextExecutionInput.FromText(typedContext);
+        }
+        else if (capture.Status == SelectionCaptureStatus.Cancelled)
+        {
+            _orb.Hide();
+            return;
+        }
+        else
+        {
+            throw new ArgumentException("The Quick Task does not support the available context.", nameof(definition));
+        }
+
+        if (!definition.Supports(input.Context.Kind))
+        {
+            throw new ArgumentException("The Quick Task does not support the captured context.", nameof(definition));
+        }
+
+        _session.Begin(input);
+        RestoreForeground(originalForeground);
+        _orb.ShowState(
+            OrbPresentationState.Generating,
+            string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                ResourceText.Get("QuickTaskRunningStatus"),
+                definition.DisplayName),
+            ResourceText.Get("QuickTaskRunningDetail"));
+        ContextTriggerExecutionResult execution = await _trigger.ExecuteQuickTaskAsync(
+            input,
+            definition,
+            _model,
+            operation.Token);
+        LastModelLatency = execution.Duration;
+        if (execution.Status == ContextTriggerExecutionStatus.Cancelled)
+        {
+            _orb.Hide();
+            return;
+        }
+
+        if (execution.Result is null)
+        {
+            _orb.Hide();
+            _resultWindow.ShowFailure(
+                ResourceText.Get("ContextResultProviderFailureTitle"),
+                GetProviderFailureMessage(execution));
+            return;
+        }
+
+        await PresentCompletedResultAsync(
+            new OperationId(operationValue),
+            input.Context,
+            execution.Result,
+            operation.Token,
+            operationLabel: definition.DisplayName);
+    }
+
     private async Task RunAsync()
     {
         _operations.CancelAll();
         Guid operationValue = Guid.NewGuid();
         using OperationLease operation = _operations.Begin(operationValue);
         _session.Clear();
+        ClearGuidedOptions();
         _resultWindow.Hide();
 
         long invoked = Stopwatch.GetTimestamp();
@@ -159,6 +328,8 @@ public sealed class ContextTriggerController : IDisposable
             ResourceText.Get("ContextOrbCapturingStatus"),
             ResourceText.Get("ContextOrbCancelHintText"));
         LastOrbPresentationLatency = Stopwatch.GetElapsedTime(invoked);
+
+        await _inputSettler.WaitForModifiersReleasedAsync(operation.Token);
 
         SelectionCaptureResult capture = await _capture.CaptureAsync(ContextLifetime, operation.Token);
         LastCaptureLatency = capture.Duration;
@@ -260,7 +431,7 @@ public sealed class ContextTriggerController : IDisposable
         if (execution.Status == ContextTriggerExecutionStatus.NeedsGuidedMode)
         {
             _session.SetResult(context.Fingerprint, execution.Result);
-            _orb.ShowGuidedOptions(context.Kind);
+            await ShowGuidedOptionsAsync(input, operation.Token);
             return;
         }
 
@@ -308,7 +479,16 @@ public sealed class ContextTriggerController : IDisposable
     {
         try
         {
-            await InsertAsync();
+            ContextSnapshot? context = _session.GetCurrent().Context;
+            if (context is { Text: not null } &&
+                context.Source is not ContextSource.DirectInput)
+            {
+                await ReplaceAsync();
+            }
+            else
+            {
+                await InsertAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -340,20 +520,101 @@ public sealed class ContextTriggerController : IDisposable
         }
     }
 
-    private void OnMoreOptionsRequested(object? sender, EventArgs args)
+    private async Task ShowGuidedOptionsAsync(
+        ContextExecutionInput input,
+        CancellationToken cancellationToken)
     {
         ContextSessionAccess session = _session.GetCurrent();
-        if (session.Status != ContextSessionAccessStatus.Available || session.Context is null)
+        if (session.Context?.Fingerprint != input.Context.Fingerprint)
+        {
+            return;
+        }
+
+        if (_guidedOptionsFingerprint == input.Context.Fingerprint && _guidedOptions is not null)
+        {
+            _orb.ShowGuidedOptions(_guidedOptions);
+            return;
+        }
+
+        _orb.ShowState(
+            OrbPresentationState.Thinking,
+            "Tailoring options",
+            "Finding useful actions for this context");
+        Guid operationValue = Guid.NewGuid();
+        using OperationLease operation = _operations.Begin(operationValue);
+        GuidedOptionsExecutionResult generated = await _trigger.GenerateGuidedOptionsAsync(
+            input,
+            _model,
+            operation.Token);
+        LastModelLatency = generated.Duration;
+        if (generated.Status == ContextTriggerExecutionStatus.Cancelled)
+        {
+            _orb.Hide();
+            return;
+        }
+
+        if (generated.Options is null || generated.Status != ContextTriggerExecutionStatus.Completed)
         {
             _orb.Hide();
             _resultWindow.ShowNotice(
-                ResourceText.Get("ContextResultContextExpiredTitle"),
-                ResourceText.Get("ContextResultContextExpiredMessage"),
+                ResourceText.Get("ContextResultProviderFailureTitle"),
+                GetProviderFailureMessage(new ContextTriggerExecutionResult(
+                    generated.Status,
+                    null,
+                    generated.Failure,
+                    generated.Model,
+                    generated.Duration)),
                 InfoBarSeverity.Error);
             return;
         }
 
-        _orb.ShowGuidedOptions(session.Context.Kind);
+        session = _session.GetCurrent();
+        if (session.Context?.Fingerprint != input.Context.Fingerprint)
+        {
+            return;
+        }
+
+        _guidedOptions = generated.Options;
+        _guidedOptionsFingerprint = input.Context.Fingerprint;
+        _orb.ShowGuidedOptions(_guidedOptions);
+    }
+
+    private void ClearGuidedOptions()
+    {
+        _guidedOptions = null;
+        _guidedOptionsFingerprint = null;
+    }
+
+    private async void OnMoreOptionsRequested(object? sender, EventArgs args)
+    {
+        try
+        {
+            ContextSessionAccess session = _session.GetCurrent();
+            if (session.Status != ContextSessionAccessStatus.Available || session.Input is null)
+            {
+                _orb.Hide();
+                _resultWindow.ShowNotice(
+                    ResourceText.Get("ContextResultContextExpiredTitle"),
+                    ResourceText.Get("ContextResultContextExpiredMessage"),
+                    InfoBarSeverity.Error);
+                return;
+            }
+
+            _resultWindow.Hide();
+            await ShowGuidedOptionsAsync(session.Input, CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer interaction owns the visible state.
+        }
+        catch (Exception)
+        {
+            _orb.Hide();
+            _resultWindow.ShowNotice(
+                ResourceText.Get("ContextResultProviderFailureTitle"),
+                ResourceText.Get("ContextResultProviderFailureMessage"),
+                InfoBarSeverity.Error);
+        }
     }
 
     private async void OnGuidedOperationRequested(
@@ -362,7 +623,42 @@ public sealed class ContextTriggerController : IDisposable
     {
         try
         {
-            await RunGuidedAsync(args.Operation, args.CustomInstruction);
+            GuidedOption option = args.Option;
+            if (option.IsCustomTask)
+            {
+                bool cancelled;
+                using (OperationLease prompt = _operations.Begin(Guid.NewGuid()))
+                {
+                    var inputWindow = new QuickTaskInputWindow(
+                        ResourceText.Get("GuidedOperationCustomTask"),
+                        _resultWindow.CurrentTheme);
+                    string? customInstruction = await inputWindow.ShowAsync(
+                        prompt.Token,
+                        _orb.OverlayBounds);
+                    cancelled = prompt.Token.IsCancellationRequested;
+                    if (!string.IsNullOrWhiteSpace(customInstruction))
+                    {
+                        option = new GuidedOption(
+                            "custom_task",
+                            ResourceText.Get("GuidedOperationCustomTask"),
+                            customInstruction);
+                    }
+                }
+
+                if (option.IsCustomTask)
+                {
+                    ContextSessionAccess session = _session.GetCurrent();
+                    if (!cancelled && session.Context is not null &&
+                        _guidedOptionsFingerprint == session.Context.Fingerprint && _guidedOptions is not null)
+                    {
+                        _orb.ShowGuidedOptions(_guidedOptions);
+                    }
+
+                    return;
+                }
+            }
+
+            await RunGuidedAsync(option);
         }
         catch (OperationCanceledException)
         {
@@ -385,9 +681,7 @@ public sealed class ContextTriggerController : IDisposable
         }
     }
 
-    private async Task RunGuidedAsync(
-        GuidedOperation guidedOperation,
-        string? customInstruction)
+    private async Task RunGuidedAsync(GuidedOption option)
     {
         ContextSessionAccess session = _session.GetCurrent();
         if (session.Status != ContextSessionAccessStatus.Available || session.Context is null)
@@ -407,13 +701,12 @@ public sealed class ContextTriggerController : IDisposable
         using OperationLease operation = _operations.Begin(operationValue);
         _orb.ShowState(
             OrbPresentationState.Generating,
-            ResourceText.Get("ContextOrbAnalyzingStatus"),
+            option.Label,
             ResourceText.Get("ContextOrbCancelHintText"));
 
-        ContextTriggerExecutionResult execution = await _trigger.ExecuteGuidedAsync(
+        ContextTriggerExecutionResult execution = await _trigger.ExecuteGuidedInstructionAsync(
             input,
-            guidedOperation,
-            customInstruction,
+            option,
             _model,
             operation.Token);
         LastModelLatency = execution.Duration;
@@ -437,7 +730,8 @@ public sealed class ContextTriggerController : IDisposable
             new OperationId(operationValue),
             context,
             execution.Result,
-            operation.Token);
+            operation.Token,
+            operationLabel: option.Label);
     }
 
     private async Task PresentCompletedResultAsync(
@@ -446,7 +740,8 @@ public sealed class ContextTriggerController : IDisposable
         SmartResult result,
         CancellationToken cancellationToken,
         string? clipboardText = null,
-        DetectedColor? detectedColor = null)
+        DetectedColor? detectedColor = null,
+        string? operationLabel = null)
     {
         ContextSessionAccess session = _session.GetCurrent();
         if (session.Context?.Fingerprint != context.Fingerprint)
@@ -455,18 +750,38 @@ public sealed class ContextTriggerController : IDisposable
         }
 
         _session.SetResult(context.Fingerprint, result, clipboardText);
+        string effectiveOperationLabel = operationLabel ??
+            result.OperationLabel ??
+            ToSmartOperationLabel(result.Intent);
+        if (detectedColor is null)
+        {
+            _orb.ShowState(
+                OrbPresentationState.Generating,
+                effectiveOperationLabel,
+                ResourceText.Get("ContextOrbFinalizingDetail"));
+            await Task.Delay(TimeSpan.FromMilliseconds(360), cancellationToken);
+        }
+
         _orb.ShowState(
             OrbPresentationState.Done,
             ResourceText.Get("ContextOrbReadyStatus"),
             ResourceText.Get("ContextOrbReadyDetail"));
         if (detectedColor is null)
         {
-            _resultWindow.ShowResult(result, guidedMode: false);
+            _resultWindow.ShowResult(
+                result,
+                guidedMode: false,
+                effectiveOperationLabel,
+                canReplace: context.Source is not ContextSource.DirectInput &&
+                            context.Kind is not ContextKind.Image and not ContextKind.UserInterface);
         }
+
         else
         {
             _resultWindow.ShowColorResult(result, detectedColor);
         }
+
+        _resultWindow.SetUndoAvailable(_undoHistory.Count > 0);
 
         string textToCopy = _session.GetCurrent().ClipboardText ?? result.FinalContent;
         ResultClipboardWriteResult copy = await _autoCopy.CopyFinalOnceAsync(
@@ -485,6 +800,35 @@ public sealed class ContextTriggerController : IDisposable
         new SuggestedAction(SuggestedActionType.Copy, "Copy the detected hex color"),
         Cursivis.Domain.Actions.RiskLevel.None,
         ConfirmationHint.None);
+
+    private static string ToSmartOperationLabel(SmartIntent intent) => intent switch
+    {
+        SmartIntent.Translate => "Translating",
+        SmartIntent.Reply => "Drafting reply",
+        SmartIntent.Rewrite => "Improving writing",
+        SmartIntent.Summarize => "Summarizing",
+        SmartIntent.Explain => "Explaining",
+        SmartIntent.Debug => "Explaining error",
+        SmartIntent.Extract => "Extracting information",
+        SmartIntent.Identify => "Identifying",
+        SmartIntent.Answer => "Answering",
+        _ => "Analyzing context",
+    };
+
+    private static TargetIdentity CreateTargetIdentity(ForegroundWindowIdentity? foreground) => new(
+        foreground is null || string.IsNullOrWhiteSpace(foreground.ProcessName)
+            ? "unknown-source"
+            : foreground.ProcessName,
+        foreground?.WindowHandle.ToInt64().ToString("X", System.Globalization.CultureInfo.InvariantCulture)
+            ?? "0");
+
+    private void RestoreForeground(ForegroundWindowIdentity? foreground)
+    {
+        if (foreground?.WindowHandle is { } handle && handle != nint.Zero)
+        {
+            _ = _activator.TryActivate(handle);
+        }
+    }
 
     private void ShowCopyNotice(ResultClipboardWriteResult copy)
     {
@@ -544,6 +888,7 @@ public sealed class ContextTriggerController : IDisposable
             currentResult.FinalContent);
         if (replacement.Status == TextReplacementStatus.Replaced)
         {
+            _undoHistory.Push(currentContext);
             _orb.ShowState(
                 OrbPresentationState.Done,
                 ResourceText.Get("ContextOrbReplacedStatus"),
@@ -623,6 +968,67 @@ public sealed class ContextTriggerController : IDisposable
             InfoBarSeverity.Error);
     }
 
+    private async void OnUndoRequested(object? sender, EventArgs args)
+    {
+        if (_undoHistory.Count == 0)
+        {
+            _resultWindow.SetUndoAvailable(false);
+            _resultWindow.ShowNotice(
+                ResourceText.Get("ContextResultNothingToUndoTitle"),
+                ResourceText.Get("ContextResultNothingToUndoMessage"),
+                InfoBarSeverity.Warning);
+            return;
+        }
+
+        ContextSnapshot context = _undoHistory.Peek();
+        nint targetHandle = GetTargetHandle(context);
+        _resultWindow.Hide();
+        _orb.ShowState(
+            OrbPresentationState.Executing,
+            ResourceText.Get("ContextOrbUndoingStatus"),
+            ResourceText.Get("ContextOrbCancelHintText"));
+        if (targetHandle == nint.Zero || !_activator.TryActivate(targetHandle))
+        {
+            ShowUndoFailure(ResourceText.Get("ContextResultTargetUnavailableMessage"));
+            return;
+        }
+
+        await Task.Delay(50);
+        TextUndoResult undo = await _undo.UndoAsync(context);
+        if (undo.Status == TextUndoStatus.Undone)
+        {
+            _ = _undoHistory.Pop();
+            _resultWindow.SetUndoAvailable(_undoHistory.Count > 0);
+            _orb.ShowState(
+                OrbPresentationState.Done,
+                ResourceText.Get("ContextOrbUndoAppliedStatus"),
+                ResourceText.Get("ContextOrbUndoAppliedDetail"));
+            _resultWindow.ShowNotice(
+                ResourceText.Get("ContextResultUndoAppliedTitle"),
+                ResourceText.Get("ContextResultUndoAppliedMessage"),
+                InfoBarSeverity.Success);
+            _orb.Hide();
+            return;
+        }
+
+        if (undo.Status != TextUndoStatus.Cancelled)
+        {
+            ShowUndoFailure(undo.SafeDetail);
+        }
+    }
+
+    private void ShowUndoFailure(string safeDetail)
+    {
+        _orb.Hide();
+        _resultWindow.SetUndoAvailable(_undoHistory.Count > 0);
+        _resultWindow.ShowNotice(
+            ResourceText.Get("ContextResultUndoFailedTitle"),
+            string.IsNullOrWhiteSpace(safeDetail)
+                ? ResourceText.Get("ContextResultUndoFailedMessage")
+                : safeDetail,
+            InfoBarSeverity.Error);
+    }
+
     private void OnCloseRequested(object? sender, EventArgs args)
     {
         nint targetHandle = GetCurrentTargetHandle();
@@ -688,12 +1094,18 @@ public sealed class ContextTriggerController : IDisposable
         {
             Cursivis.Contracts.OpenAI.OpenAiFailureKind.Authentication =>
                 ResourceText.Get("ContextResultAuthenticationMessage"),
+            Cursivis.Contracts.OpenAI.OpenAiFailureKind.Permission =>
+                ResourceText.Get("ContextResultPermissionMessage"),
+            Cursivis.Contracts.OpenAI.OpenAiFailureKind.Quota =>
+                ResourceText.Get("ContextResultQuotaMessage"),
             Cursivis.Contracts.OpenAI.OpenAiFailureKind.RateLimit =>
                 ResourceText.Get("ContextResultRateLimitedMessage"),
             Cursivis.Contracts.OpenAI.OpenAiFailureKind.ModelUnavailable =>
                 ResourceText.Get("ContextResultModelUnavailableMessage"),
             Cursivis.Contracts.OpenAI.OpenAiFailureKind.Network =>
                 ResourceText.Get("ContextResultNetworkMessage"),
+            Cursivis.Contracts.OpenAI.OpenAiFailureKind.Timeout =>
+                ResourceText.Get("ContextResultTimeoutMessage"),
             _ => ResourceText.Get("ContextResultProviderFailureMessage"),
         };
     }

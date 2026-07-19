@@ -83,6 +83,27 @@ public sealed class LayeredSelectionCaptureServiceTests
         Assert.Equal(SelectionCaptureStatus.NoSelection, result.Status);
     }
 
+    [Fact]
+    public async Task CaptureAsync_ForegroundBoundFallback_ReceivesOriginalSourceWindow()
+    {
+        var fallback = new BoundStubReader(TextSelectionReadResult.Captured(
+            "clipboard fallback",
+            ContextSource.ProtectedClipboard));
+        var service = CreateService(
+            new StubReader(TextSelectionReadResult.Failed(
+                TextSelectionReadStatus.NoSelection,
+                ContextSource.UserInterfaceAutomation,
+                "No UIA selection.")),
+            fallback);
+
+        SelectionCaptureResult result = await service.CaptureAsync(
+            TimeSpan.FromMinutes(5),
+            CancellationToken.None);
+
+        Assert.Equal(SelectionCaptureStatus.Captured, result.Status);
+        Assert.Equal(new nint(1), fallback.SourceWindowHandle);
+    }
+
     private static LayeredSelectionCaptureService CreateService(params ITextSelectionReader[] readers) =>
         new(
             new SequencedForegroundProvider(
@@ -97,6 +118,23 @@ public sealed class LayeredSelectionCaptureServiceTests
         public Task<TextSelectionReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
             CallCount++;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class BoundStubReader(TextSelectionReadResult result)
+        : IForegroundBoundTextSelectionReader
+    {
+        public nint SourceWindowHandle { get; private set; }
+
+        public Task<TextSelectionReadResult> ReadAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(result);
+
+        public Task<TextSelectionReadResult> ReadForWindowAsync(
+            nint sourceWindowHandle,
+            CancellationToken cancellationToken = default)
+        {
+            SourceWindowHandle = sourceWindowHandle;
             return Task.FromResult(result);
         }
     }

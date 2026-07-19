@@ -54,6 +54,19 @@ public sealed partial class MainPage : Page
         {
             overviewPage.NavigationRequested -= OnOverviewNavigationRequested;
             overviewPage.NavigationRequested += OnOverviewNavigationRequested;
+            if (App.CurrentRuntime is AppRuntime runtime)
+            {
+                overviewPage.ApplyRuntimeStatus(runtime);
+            }
+        }
+    }
+
+    internal void RefreshRuntimeStatus()
+    {
+        if (ContentFrame.Content is OverviewPage overviewPage &&
+            App.CurrentRuntime is AppRuntime runtime)
+        {
+            overviewPage.ApplyRuntimeStatus(runtime);
         }
     }
 

@@ -8,8 +8,8 @@
   "properties": {
     "schemaVersion": { "const": 1 },
     "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9-]+$" },
-    "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
-    "finalizedInstruction": { "type": "string", "minLength": 1, "maxLength": 12000 },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "finalizedInstruction": { "type": "string", "minLength": 40, "maxLength": 8000 },
     "supportedContext": { "type": "string", "enum": ["text", "image", "text_and_image"] },
     "outputMode": { "type": "string", "enum": ["replacement_text", "analysis", "structured_data", "suggested_action"] },
     "mayProposeAction": { "type": "boolean" },

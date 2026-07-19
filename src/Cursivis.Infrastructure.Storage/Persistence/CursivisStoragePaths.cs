@@ -15,6 +15,8 @@ public sealed class CursivisStoragePaths
 
     public string QuickTaskFile => Path.Combine(RootDirectory, "quick-task.json");
 
+    public string HotkeysFile => Path.Combine(RootDirectory, "hotkeys.json");
+
     public string MemoryFile => Path.Combine(RootDirectory, "memory.json");
 
     public string SecretsDirectory => Path.Combine(RootDirectory, "secrets");
@@ -26,6 +28,8 @@ public sealed class CursivisStoragePaths
     public string OverlayPlacementFile => Path.Combine(RootDirectory, "overlay-placement.json");
 
     public string ResultPanelSizeFile => Path.Combine(RootDirectory, "result-panel-size.json");
+
+    public string ResultPanelPlacementFile => Path.Combine(RootDirectory, "result-panel-placement.json");
 
     public static CursivisStoragePaths ForCurrentUser()
     {

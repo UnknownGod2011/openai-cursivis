@@ -68,15 +68,31 @@ public sealed class QuickTaskDefinition
             throw new ArgumentException("A Quick Task display name is required.", nameof(displayName));
         }
 
+        if (displayName.Trim().Length > 64)
+        {
+            throw new ArgumentException("A Quick Task display name cannot exceed 64 characters.", nameof(displayName));
+        }
+
         if (string.IsNullOrWhiteSpace(finalizedInstruction))
         {
             throw new ArgumentException("A finalized Quick Task instruction is required.", nameof(finalizedInstruction));
+        }
+
+        if (finalizedInstruction.Trim().Length > 8_000)
+        {
+            throw new ArgumentException("A finalized Quick Task instruction cannot exceed 8,000 characters.", nameof(finalizedInstruction));
         }
 
         if (supportedContext is QuickTaskContextType.None ||
             (supportedContext & ~QuickTaskContextType.TextAndImage) != 0)
         {
             throw new ArgumentOutOfRangeException(nameof(supportedContext), "A Quick Task must support text, image, or both.");
+        }
+
+
+        if (!Enum.IsDefined(outputMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(outputMode));
         }
 
         Id = id;

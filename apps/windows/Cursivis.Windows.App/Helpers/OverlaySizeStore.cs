@@ -6,6 +6,7 @@ namespace Cursivis.Windows.App.Helpers;
 
 internal sealed class OverlaySizeStore
 {
+    private const int CurrentVersion = 2;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly string _filePath;
     private readonly AtomicFileWriter _writer = new(backupRetentionCount: 1);
@@ -28,7 +29,12 @@ internal sealed class OverlaySizeStore
             SavedSize? value = JsonSerializer.Deserialize<SavedSize>(
                 File.ReadAllBytes(_filePath),
                 SerializerOptions);
-            return value is { Width: >= 780 and <= 2400, Height: >= 300 and <= 1800 }
+            return value is
+                {
+                    Version: CurrentVersion,
+                    Width: >= 516 and <= 1600,
+                    Height: >= 232 and <= 1200,
+                }
                 ? new OverlaySize(value.Width, value.Height)
                 : null;
         }
@@ -42,10 +48,10 @@ internal sealed class OverlaySizeStore
     public Task SaveAsync(OverlaySize size, CancellationToken cancellationToken = default)
     {
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(
-            new SavedSize(size.Width, size.Height),
+            new SavedSize(CurrentVersion, size.Width, size.Height),
             SerializerOptions);
         return _writer.WriteAsync(_filePath, bytes, cancellationToken);
     }
 
-    private sealed record SavedSize(int Width, int Height);
+    private sealed record SavedSize(int Version, int Width, int Height);
 }

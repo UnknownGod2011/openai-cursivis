@@ -69,13 +69,16 @@
   <data name="ContextResultNoSelectionTitle" xml:space="preserve"><value>No text selection found</value></data>
   <data name="ContextResultNoSelectionMessage" xml:space="preserve"><value>Select text in the foreground application, then press Ctrl+Alt+O again.</value></data>
   <data name="ContextResultForegroundChangedMessage" xml:space="preserve"><value>The foreground application changed during capture. Return to the source and try again.</value></data>
-  <data name="ContextResultCaptureUnavailableMessage" xml:space="preserve"><value>This application did not expose a supported text selection.</value></data>
+  <data name="ContextResultCaptureUnavailableMessage" xml:space="preserve"><value>Cursivis could not safely capture the selected text after trying the available selection methods.</value></data>
   <data name="ContextResultCaptureTimedOutMessage" xml:space="preserve"><value>Selection capture timed out without changing the clipboard.</value></data>
   <data name="ContextResultProviderFailureTitle" xml:space="preserve"><value>OpenAI request did not complete</value></data>
-  <data name="ContextResultAuthenticationMessage" xml:space="preserve"><value>Save and test an OpenAI API key in Settings, then try again.</value></data>
+  <data name="ContextResultAuthenticationMessage" xml:space="preserve"><value>The OpenAI key is missing or invalid. Open Settings to check the API key.</value></data>
+  <data name="ContextResultPermissionMessage" xml:space="preserve"><value>The OpenAI project does not permit this model or request. Open Settings to review the model and API key.</value></data>
+  <data name="ContextResultQuotaMessage" xml:space="preserve"><value>OpenAI quota or credits may be exhausted. Open Settings to check the API key or billing.</value></data>
   <data name="ContextResultRateLimitedMessage" xml:space="preserve"><value>OpenAI is rate-limiting requests. Wait briefly and try again.</value></data>
   <data name="ContextResultModelUnavailableMessage" xml:space="preserve"><value>The configured Responses model is unavailable for this account.</value></data>
   <data name="ContextResultNetworkMessage" xml:space="preserve"><value>Cursivis could not reach OpenAI. Check the network connection and try again.</value></data>
+  <data name="ContextResultTimeoutMessage" xml:space="preserve"><value>OpenAI took too long to respond. Check the connection and try again.</value></data>
   <data name="ContextResultMalformedResponseMessage" xml:space="preserve"><value>OpenAI returned a response that did not match the required Cursivis result contract.</value></data>
   <data name="ContextResultProviderFailureMessage" xml:space="preserve"><value>The request failed safely. No content was changed.</value></data>
   <data name="ContextResultUnexpectedFailureTitle" xml:space="preserve"><value>Context Trigger stopped safely</value></data>
@@ -83,11 +86,11 @@
   <data name="ContextResultCopiedTitle" xml:space="preserve"><value>Copied</value></data>
   <data name="ContextResultCopiedMessage" xml:space="preserve"><value>The result is now on the clipboard.</value></data>
   <data name="ContextResultClipboardUnavailableTitle" xml:space="preserve"><value>Clipboard unavailable</value></data>
-  <data name="ContextResultClipboardUnavailableMessage" xml:space="preserve"><value>The result is ready, but Windows could not copy it. Use Copy to try again.</value></data>
+  <data name="ContextResultClipboardUnavailableMessage" xml:space="preserve"><value>The result is ready, but Windows could not copy it because the clipboard was busy. The result remains visible.</value></data>
   <data name="ContextResultContextExpiredTitle" xml:space="preserve"><value>The captured context expired</value></data>
   <data name="ContextResultContextExpiredMessage" xml:space="preserve"><value>Select the content again before opening Guided Mode.</value></data>
   <data name="ContextResultReplaceFailedTitle" xml:space="preserve"><value>Selection was not replaced</value></data>
-  <data name="ContextResultReplaceFailedMessage" xml:space="preserve"><value>The target did not accept deterministic replacement. You can still copy the result.</value></data>
+  <data name="ContextResultReplaceFailedMessage" xml:space="preserve"><value>The target did not accept deterministic replacement. The result remains visible and already copied when possible.</value></data>
   <data name="ContextResultTargetUnavailableMessage" xml:space="preserve"><value>The original application is no longer available as the active replacement target.</value></data>
 
   <data name="OverviewNavigationItem.Content" xml:space="preserve"><value>Overview</value></data>
@@ -199,10 +202,17 @@
   <data name="OverviewReadinessCard.Description" xml:space="preserve"><value>Compact status based only on observed local state.</value></data>
   <data name="OverviewOpenAiStatus.StatusText" xml:space="preserve"><value>OpenAI · Not configured</value></data>
   <data name="OverviewOpenAiStatus.DetailText" xml:space="preserve"><value>No secure key reference exists</value></data>
+  <data name="OverviewOpenAiReadyStatus" xml:space="preserve"><value>OpenAI · Key saved</value></data>
+  <data name="OverviewOpenAiReadyDetail" xml:space="preserve"><value>A secure credential reference exists for the current Windows user</value></data>
   <data name="OverviewBrowserStatus.StatusText" xml:space="preserve"><value>Browser bridge · Disconnected</value></data>
   <data name="OverviewBrowserStatus.DetailText" xml:space="preserve"><value>No current authenticated handshake</value></data>
   <data name="OverviewHotkeyStatus.StatusText" xml:space="preserve"><value>Hotkeys · Not registered</value></data>
   <data name="OverviewHotkeyStatus.DetailText" xml:space="preserve"><value>Configured defaults have not been activated</value></data>
+  <data name="OverviewHotkeysReadyStatus" xml:space="preserve"><value>Hotkeys · Registered</value></data>
+  <data name="OverviewHotkeysReadyDetail" xml:space="preserve"><value>Context Trigger, Quick Task, and emergency cancel are active</value></data>
+  <data name="OverviewBrowserPendingDetail" xml:space="preserve"><value>Browser integration still needs setup</value></data>
+  <data name="OverviewOpenAiBrowserPendingDetail" xml:space="preserve"><value>OpenAI and browser integration still need setup</value></data>
+  <data name="OverviewHotkeysBrowserPendingDetail" xml:space="preserve"><value>Hotkeys and browser integration still need setup</value></data>
   <data name="OverviewVoiceStatus.StatusText" xml:space="preserve"><value>Voice · Not tested</value></data>
   <data name="OverviewVoiceStatus.DetailText" xml:space="preserve"><value>No endpoint or permission check yet</value></data>
   <data name="OverviewDefaultsCard.Header" xml:space="preserve"><value>Current safe defaults</value></data>
@@ -349,7 +359,25 @@
   <data name="QuickTaskValidationInstructionLength" xml:space="preserve"><value>The finalized instruction exceeds the 8,000-character safety limit.</value></data>
   <data name="QuickTaskValidationContextRequired" xml:space="preserve"><value>Select at least one supported context type.</value></data>
   <data name="QuickTaskValidationReady" xml:space="preserve"><value>The definition passes local structural validation.</value></data>
+  <data name="QuickTaskValidationSafetyRejected" xml:space="preserve"><value>This instruction conflicts with centralized safety or confirmation policy and cannot be saved.</value></data>
   <data name="QuickTaskApprovalRequired" xml:space="preserve"><value>Review and approve the final instruction before saving.</value></data>
+  <data name="GenerateInstructionAvailableHelp.Text" xml:space="preserve"><value>Uses the economy Responses model to produce a typed draft for your review. Nothing is saved until you approve it.</value></data>
+  <data name="TestQuickTaskAvailableHelp.Text" xml:space="preserve"><value>Runs only against this safe fixture through the standard Responses API. It never captures the current screen.</value></data>
+  <data name="QuickTaskRuntimeUnavailable" xml:space="preserve"><value>The Cursivis runtime is not available yet.</value></data>
+  <data name="QuickTaskFinalizingStatus" xml:space="preserve"><value>Finalizing Quick Task…</value></data>
+  <data name="QuickTaskFinalizedStatus" xml:space="preserve"><value>Draft ready for review</value></data>
+  <data name="QuickTaskFinalizationRejected" xml:space="preserve"><value>The draft contains a safety-policy conflict. Review the visible instruction and revise the rough description.</value></data>
+  <data name="QuickTaskFinalizationFailed" xml:space="preserve"><value>The Quick Task draft could not be finalized.</value></data>
+  <data name="QuickTaskFixtureRequired" xml:space="preserve"><value>Enter non-sensitive sample content before testing.</value></data>
+  <data name="QuickTaskTestingStatus" xml:space="preserve"><value>Testing Quick Task…</value></data>
+  <data name="QuickTaskTestFailed" xml:space="preserve"><value>The Quick Task test did not return a valid result.</value></data>
+  <data name="QuickTaskTestSucceeded" xml:space="preserve"><value>Safe fixture test completed</value></data>
+  <data name="QuickTaskSavingStatus" xml:space="preserve"><value>Saving Quick Task…</value></data>
+  <data name="QuickTaskSavedStatus" xml:space="preserve"><value>Quick Task saved</value></data>
+  <data name="QuickTaskReadyToSave" xml:space="preserve"><value>Approved and ready to save</value></data>
+  <data name="QuickTaskOperationFailedTitle" xml:space="preserve"><value>Quick Task needs attention</value></data>
+  <data name="QuickTaskHotkeySaved" xml:space="preserve"><value>Quick Task shortcut saved</value></data>
+  <data name="QuickTaskHotkeyConflict" xml:space="preserve"><value>Windows could not register that shortcut. The previous shortcut remains active.</value></data>
   <data name="QuickTaskSaveStorageUnavailable" xml:space="preserve"><value>Approved and valid · durable Quick Task storage is unavailable</value></data>
 
   <data name="HotkeysRegistrationInfo.Title" xml:space="preserve"><value>No shortcuts are active</value></data>
@@ -589,6 +617,17 @@
   <data name="GuidedOperationFindIssue" xml:space="preserve"><value>Find the issue</value></data>
   <data name="GuidedOperationAnalyzeColors" xml:space="preserve"><value>Analyze colors</value></data>
   <data name="ContextResultColorDetectedOperation" xml:space="preserve"><value>Color detected</value></data>
+  <data name="QuickTaskInputHint.Text" xml:space="preserve"><value>No text is selected. Type or paste content for this task.</value></data>
+  <data name="QuickTaskInputTextBox.PlaceholderText" xml:space="preserve"><value>Type or paste content</value></data>
+  <data name="QuickTaskInputTextBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Quick Task content</value></data>
+  <data name="QuickTaskInputCancelButton.Content" xml:space="preserve"><value>Cancel</value></data>
+  <data name="QuickTaskInputCancelButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Cancel Quick Task input</value></data>
+  <data name="QuickTaskInputRunButton.Content" xml:space="preserve"><value>Run task</value></data>
+  <data name="QuickTaskInputRunButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Run Quick Task</value></data>
+  <data name="QuickTaskUnsupportedContextTitle" xml:space="preserve"><value>Context not supported</value></data>
+  <data name="QuickTaskUnsupportedContextMessage" xml:space="preserve"><value>The saved Quick Task does not support this type of context. Edit its supported context in Settings or cancel.</value></data>
+  <data name="QuickTaskRunningStatus" xml:space="preserve"><value>Running {0}</value></data>
+  <data name="QuickTaskRunningDetail" xml:space="preserve"><value>Using only the captured context · cancel anytime</value></data>
   <data name="GuidedOperationCustomTask" xml:space="preserve"><value>Custom task</value></data>
   <data name="ContextOrbInsertingStatus" xml:space="preserve"><value>Inserting result</value></data>
   <data name="ContextOrbInsertedStatus" xml:space="preserve"><value>Inserted</value></data>
@@ -599,6 +638,16 @@
   <data name="ContextOrbCodeCapturedStatus" xml:space="preserve"><value>Code selection captured</value></data>
   <data name="ContextOrbImageCapturedStatus" xml:space="preserve"><value>Image captured</value></data>
   <data name="ContextOrbSmartModeDetail" xml:space="preserve"><value>Smart Mode is generating a result. Cancel anytime.</value></data>
+  <data name="ContextOrbFinalizingDetail" xml:space="preserve"><value>Preparing the completed result</value></data>
+  <data name="ContextOrbUndoingStatus" xml:space="preserve"><value>Applying undo</value></data>
+  <data name="ContextOrbUndoAppliedStatus" xml:space="preserve"><value>Undo applied</value></data>
+  <data name="ContextOrbUndoAppliedDetail" xml:space="preserve"><value>The previous replacement was restored in the source application.</value></data>
+  <data name="ContextResultNothingToUndoTitle" xml:space="preserve"><value>Nothing to undo</value></data>
+  <data name="ContextResultNothingToUndoMessage" xml:space="preserve"><value>No Cursivis text replacement is available to undo.</value></data>
+  <data name="ContextResultUndoAppliedTitle" xml:space="preserve"><value>Undo applied</value></data>
+  <data name="ContextResultUndoAppliedMessage" xml:space="preserve"><value>The previous text replacement was restored.</value></data>
+  <data name="ContextResultUndoFailedTitle" xml:space="preserve"><value>Undo did not complete</value></data>
+  <data name="ContextResultUndoFailedMessage" xml:space="preserve"><value>The source application could not restore the previous replacement.</value></data>
   <data name="RegionSelectionTitle.Text" xml:space="preserve"><value>Select visual context</value></data>
   <data name="RegionSelectionHint.Text" xml:space="preserve"><value>Drag to analyze an image · Click to copy a color · Esc to cancel</value></data>
 </root>

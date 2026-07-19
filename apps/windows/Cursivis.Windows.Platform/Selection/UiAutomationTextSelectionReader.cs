@@ -8,7 +8,10 @@ namespace Cursivis.Windows.Platform.Selection;
 
 public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
 {
-    private static readonly TimeSpan ReadTimeout = TimeSpan.FromMilliseconds(750);
+    // A short UIA budget keeps the fallback path responsive for Chromium,
+    // Electron, PDF, and custom controls whose providers do not expose a text
+    // range. The abandoned read releases its gate when it completes.
+    private static readonly TimeSpan ReadTimeout = TimeSpan.FromMilliseconds(180);
     private readonly SemaphoreSlim _singleRead = new(1, 1);
 
     public async Task<TextSelectionReadResult> ReadAsync(
@@ -55,33 +58,16 @@ public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
         try
         {
             AutomationElement focused = AutomationElement.FocusedElement;
-            if (!focused.TryGetCurrentPattern(TextPattern.Pattern, out object? patternObject) ||
-                patternObject is not TextPattern textPattern ||
-                textPattern.SupportedTextSelection == SupportedTextSelection.None)
+            string? selectedText = TryReadSelection(focused);
+            if (string.IsNullOrWhiteSpace(selectedText))
             {
-                return NoSelection("The focused control does not expose a selectable text pattern.");
+                selectedText = TryReadForegroundDescendantSelection();
             }
 
-            TextPatternRange[] ranges = textPattern.GetSelection();
-            if (ranges.Length == 0)
-            {
-                return NoSelection("The focused control has no selected text range.");
-            }
-
-            var selected = new List<string>(ranges.Length);
-            foreach (TextPatternRange range in ranges)
-            {
-                string value = range.GetText(ContextTriggerService.MaximumSelectionCharacters + 1);
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    selected.Add(value);
-                }
-            }
-
-            return selected.Count == 0
-                ? NoSelection("The UI Automation selection was empty.")
+            return string.IsNullOrWhiteSpace(selectedText)
+                ? NoSelection("The foreground application has no selected text range.")
                 : TextSelectionReadResult.Captured(
-                    string.Join(Environment.NewLine, selected),
+                    selectedText,
                     ContextSource.UserInterfaceAutomation);
         }
         catch (Exception exception) when (
@@ -95,9 +81,69 @@ public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
         }
     }
 
+    private static string? TryReadForegroundDescendantSelection()
+    {
+        nint windowHandle = GetForegroundWindow();
+        if (windowHandle == nint.Zero)
+        {
+            return null;
+        }
+
+        AutomationElement foreground = AutomationElement.FromHandle(windowHandle);
+        var supportsText = new PropertyCondition(
+            AutomationElement.IsTextPatternAvailableProperty,
+            true);
+        AutomationElementCollection candidates = foreground.FindAll(
+            TreeScope.Descendants,
+            supportsText);
+        foreach (AutomationElement candidate in candidates)
+        {
+            if (candidate.Current.IsOffscreen)
+            {
+                continue;
+            }
+
+            string? selection = TryReadSelection(candidate);
+            if (!string.IsNullOrWhiteSpace(selection))
+            {
+                return selection;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TryReadSelection(AutomationElement element)
+    {
+        if (!element.TryGetCurrentPattern(TextPattern.Pattern, out object? patternObject) ||
+            patternObject is not TextPattern textPattern ||
+            textPattern.SupportedTextSelection == SupportedTextSelection.None)
+        {
+            return null;
+        }
+
+        TextPatternRange[] ranges = textPattern.GetSelection();
+        var selected = new List<string>(ranges.Length);
+        foreach (TextPatternRange range in ranges)
+        {
+            string value = range.GetText(ContextTriggerService.MaximumSelectionCharacters + 1);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                selected.Add(value);
+            }
+        }
+
+        return selected.Count == 0
+            ? null
+            : string.Join(Environment.NewLine, selected);
+    }
+
     private static TextSelectionReadResult NoSelection(string detail) =>
         TextSelectionReadResult.Failed(
             TextSelectionReadStatus.NoSelection,
             ContextSource.UserInterfaceAutomation,
             detail);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 }

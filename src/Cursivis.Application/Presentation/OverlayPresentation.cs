@@ -37,20 +37,15 @@ public readonly record struct ResultPanelLogicalSize(int Width, int Height);
 
 public static class ResultPanelSizeCalculator
 {
-    public const int DefaultWidth = 780;
-    public const int MinimumHeight = 340;
-    public const int MaximumInitialHeight = 540;
+    public const int DefaultWidth = 612;
+    public const int MinimumHeight = 312;
+    public const int MaximumInitialHeight = 312;
 
     public static ResultPanelLogicalSize Calculate(string content, bool hasNotice)
     {
         ArgumentNullException.ThrowIfNull(content);
-        int explicitLines = content.Count(static character => character == '\n') + 1;
-        int wrappedLines = Math.Max(1, (content.Length + 79) / 80);
-        int estimatedLines = Math.Max(explicitLines, wrappedLines);
-        int height = 278 + (Math.Min(estimatedLines, 9) * 27) + (hasNotice ? 64 : 0);
-        return new ResultPanelLogicalSize(
-            DefaultWidth,
-            Math.Clamp(height, MinimumHeight, MaximumInitialHeight));
+        _ = hasNotice;
+        return new ResultPanelLogicalSize(DefaultWidth, MinimumHeight);
     }
 }
 

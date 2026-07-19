@@ -25,6 +25,11 @@ public interface INativeHotkeyApi
         int registrationId,
         HotkeyChord chord);
 
+    NativeHotkeyOperationResult RegisterUnmodified(
+        nint windowHandle,
+        int registrationId,
+        uint virtualKey);
+
     NativeHotkeyOperationResult Unregister(
         nint windowHandle,
         int registrationId);
@@ -41,12 +46,38 @@ public sealed class Win32NativeHotkeyApi : INativeHotkeyApi
         int registrationId,
         HotkeyChord chord)
     {
+        return RegisterCore(
+            windowHandle,
+            registrationId,
+            (uint)chord.Modifiers,
+            chord.VirtualKey);
+    }
+
+    public NativeHotkeyOperationResult RegisterUnmodified(
+        nint windowHandle,
+        int registrationId,
+        uint virtualKey)
+    {
+        if (virtualKey is 0 or > 0xFF)
+        {
+            throw new ArgumentOutOfRangeException(nameof(virtualKey));
+        }
+
+        return RegisterCore(windowHandle, registrationId, 0, virtualKey);
+    }
+
+    private static NativeHotkeyOperationResult RegisterCore(
+        nint windowHandle,
+        int registrationId,
+        uint modifiers,
+        uint virtualKey)
+    {
         EnsureWindows();
         if (RegisterHotKey(
                 windowHandle,
                 registrationId,
-                (uint)chord.Modifiers | NoRepeat,
-                chord.VirtualKey))
+                modifiers | NoRepeat,
+                virtualKey))
         {
             return NativeHotkeyOperationResult.Success;
         }

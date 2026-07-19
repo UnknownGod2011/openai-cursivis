@@ -41,12 +41,11 @@ public sealed partial class RegionSelectionWindow : Window
         InitializeComponent();
         Title = "Cursivis visual selection";
         _screenCapture = screenCapture ?? throw new ArgumentNullException(nameof(screenCapture));
-        var presenter = OverlappedPresenter.Create();
+        var presenter = (OverlappedPresenter)AppWindow.Presenter;
         presenter.IsMaximizable = false;
         presenter.IsMinimizable = false;
         presenter.IsResizable = false;
         presenter.SetBorderAndTitleBar(false, false);
-        AppWindow.SetPresenter(presenter);
         nint handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _overlay = new NativeOverlayWindow(handle, noActivate: false);
         Closed += OnClosed;

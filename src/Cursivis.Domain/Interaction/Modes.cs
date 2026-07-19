@@ -70,7 +70,8 @@ public sealed record SmartResult
         string finalContent,
         SuggestedAction suggestedAction,
         RiskLevel riskHint,
-        ConfirmationHint confirmationHint)
+        ConfirmationHint confirmationHint,
+        string? operationLabel = null)
     {
         if (!double.IsFinite(confidence) || confidence is < 0 or > 1)
         {
@@ -83,6 +84,13 @@ public sealed record SmartResult
         }
 
         ArgumentNullException.ThrowIfNull(suggestedAction);
+        if (operationLabel is not null &&
+            (string.IsNullOrWhiteSpace(operationLabel) || operationLabel.Trim().Length > 40))
+        {
+            throw new ArgumentException(
+                "The operation label must be a concise user-visible action.",
+                nameof(operationLabel));
+        }
 
         ContextType = contextType;
         Intent = intent;
@@ -91,6 +99,7 @@ public sealed record SmartResult
         SuggestedAction = suggestedAction.Validate();
         RiskHint = riskHint;
         ConfirmationHint = confirmationHint;
+        OperationLabel = operationLabel?.Trim();
     }
 
     public int SchemaVersion => CurrentSchemaVersion;
@@ -108,6 +117,8 @@ public sealed record SmartResult
     public RiskLevel RiskHint { get; }
 
     public ConfirmationHint ConfirmationHint { get; }
+
+    public string? OperationLabel { get; }
 
     public override string ToString() =>
         $"SmartResult(Context={ContextType}, Intent={Intent}, Confidence={Confidence:F2}, Content=<redacted>, SuggestedAction={SuggestedAction.Type}, RiskHint={RiskHint})";

@@ -8,88 +8,92 @@ namespace Cursivis.Windows.Platform.Overlays;
 /// </summary>
 public sealed class NativeOverlayWindow : IDisposable
 {
+    private const uint WmNcCalcSize = 0x0083;
+    private const uint WmNcPaint = 0x0085;
+    private const uint WmNcActivate = 0x0086;
+    private const uint WmGetMinMaxInfo = 0x0024;
+    private const uint WmNcDestroy = 0x0082;
+    private const nuint SubclassId = 0x43564F4C; // "CVOL"
     private const int ExtendedStyleIndex = -20;
+    private const int WindowStyleIndex = -16;
     private const long ExtendedStyleToolWindow = 0x00000080L;
+    private const long ExtendedStyleWindowEdge = 0x00000100L;
+    private const long ExtendedStyleClientEdge = 0x00000200L;
+    private const long ExtendedStyleStaticEdge = 0x00020000L;
     private const long ExtendedStyleAppWindow = 0x00040000L;
     private const long ExtendedStyleNoActivate = 0x08000000L;
+    private const long WindowStyleCaption = 0x00C00000L;
+    private const long WindowStyleSystemMenu = 0x00080000L;
+    private const long WindowStyleThickFrame = 0x00040000L;
+    private const long WindowStyleMinimizeBox = 0x00020000L;
+    private const long WindowStyleMaximizeBox = 0x00010000L;
     private const uint SetWindowPositionNoMove = 0x0002;
     private const uint SetWindowPositionNoSize = 0x0001;
+    private const uint SetWindowPositionNoZOrder = 0x0004;
     private const uint SetWindowPositionNoActivate = 0x0010;
     private const uint SetWindowPositionFrameChanged = 0x0020;
     private const uint SetWindowPositionShowWindow = 0x0040;
     private const uint SetWindowPositionHideWindow = 0x0080;
     private const int ShowNoActivate = 4;
     private const int HideWindow = 0;
-    private const uint WindowMessageNonClientHitTest = 0x0084;
-    private const uint WindowMessageNonClientCalculateSize = 0x0083;
-    private const uint WindowMessageNonClientLeftButtonDown = 0x00A1;
-    private const uint WindowMessageSystemCommand = 0x0112;
-    private const uint WindowMessageGetMinMaxInfo = 0x0024;
-    private const uint WindowMessageEnterSizeMove = 0x0231;
-    private const uint WindowMessageExitSizeMove = 0x0232;
-    private const int HitTestClient = 1;
-    private const int HitTestCaption = 2;
-    private const int HitTestLeft = 10;
-    private const int HitTestRight = 11;
-    private const int HitTestTop = 12;
-    private const int HitTestTopLeft = 13;
-    private const int HitTestTopRight = 14;
-    private const int HitTestBottom = 15;
-    private const int HitTestBottomLeft = 16;
-    private const int HitTestBottomRight = 17;
-    private const int SystemCommandSize = 0xF000;
-    private const uint MonitorDefaultToNearest = 2;
     private const int DwmWindowAttributeBorderColor = 34;
+    private const int DwmWindowAttributeNcRenderingPolicy = 2;
+    private const uint DwmNcRenderingDisabled = 1;
     private const uint DwmColorNone = 0xFFFFFFFE;
-    private const nuint OverlaySubclassId = 0x43555253;
     private static readonly nint Topmost = new(-1);
     private static readonly nint NotTopmost = new(-2);
     private readonly nint _windowHandle;
-    private readonly SubclassProcedure? _subclassProcedure;
-    private readonly bool _isResizable;
+    private readonly bool _allowResize;
     private readonly int _minimumLogicalWidth;
     private readonly int _minimumLogicalHeight;
-    private int _lastHitTest = HitTestClient;
-    private bool _isInteracting;
+    private readonly SubclassProcedure _subclassProcedure;
+    private OverlayRegionShape[]? _logicalRegionShapes;
+    private bool _subclassAttached;
     private bool _disposed;
 
     public NativeOverlayWindow(
         nint windowHandle,
         bool noActivate,
-        bool resizable = false,
-        int minimumLogicalWidth = 0,
-        int minimumLogicalHeight = 0)
+        bool allowResize = false,
+        int minimumLogicalWidth = 1,
+        int minimumLogicalHeight = 1)
     {
         if (windowHandle == nint.Zero)
         {
             throw new ArgumentException("An overlay HWND is required.", nameof(windowHandle));
         }
 
-        _windowHandle = windowHandle;
-        _isResizable = resizable;
-        _minimumLogicalWidth = Math.Max(1, minimumLogicalWidth);
-        _minimumLogicalHeight = Math.Max(1, minimumLogicalHeight);
-        ConfigureUtilityStyles(noActivate);
-        SuppressDwmBorder();
-        if (_isResizable)
+        if (minimumLogicalWidth <= 0)
         {
-            _subclassProcedure = WindowSubclassProcedure;
-            if (!SetWindowSubclass(
-                    _windowHandle,
-                    _subclassProcedure,
-                    OverlaySubclassId,
-                    nint.Zero))
-            {
-                throw new Win32Exception(
-                    Marshal.GetLastWin32Error(),
-                    "The overlay resize handler could not be installed.");
-            }
-
-            RefreshFrame();
+            throw new ArgumentOutOfRangeException(nameof(minimumLogicalWidth));
         }
-    }
 
-    public event EventHandler? MoveOrResizeCompleted;
+        if (minimumLogicalHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimumLogicalHeight));
+        }
+
+        _windowHandle = windowHandle;
+        _allowResize = allowResize;
+        _minimumLogicalWidth = minimumLogicalWidth;
+        _minimumLogicalHeight = minimumLogicalHeight;
+        _subclassProcedure = WindowProcedure;
+        _subclassAttached = SetWindowSubclass(
+            _windowHandle,
+            _subclassProcedure,
+            SubclassId,
+            0);
+        if (!_subclassAttached)
+        {
+            throw new Win32Exception(
+                Marshal.GetLastWin32Error(),
+                "The overlay native window hook could not be installed.");
+        }
+
+        ConfigureUtilityStyles(noActivate);
+        ConfigureBorderlessStyle();
+        SuppressDwmBorder();
+    }
 
     public nint WindowHandle => _windowHandle;
 
@@ -97,7 +101,40 @@ public sealed class NativeOverlayWindow : IDisposable
 
     public bool IsVisible => !_disposed && IsWindowVisible(_windowHandle);
 
-    public bool IsInteracting => _isInteracting;
+    public bool HasBorderlessStyle
+    {
+        get
+        {
+            if (_disposed)
+            {
+                return false;
+            }
+
+            long prohibitedStyle = WindowStyleCaption |
+                                   WindowStyleSystemMenu |
+                                   WindowStyleMinimizeBox |
+                                   WindowStyleMaximizeBox;
+            if (!_allowResize)
+            {
+                prohibitedStyle |= WindowStyleThickFrame;
+            }
+
+            long prohibitedExtendedStyle = ExtendedStyleAppWindow |
+                                           ExtendedStyleWindowEdge |
+                                           ExtendedStyleClientEdge |
+                                           ExtendedStyleStaticEdge;
+            return (GetWindowLongPtr(_windowHandle, WindowStyleIndex).ToInt64() & prohibitedStyle) == 0 &&
+                   (GetWindowLongPtr(_windowHandle, ExtendedStyleIndex).ToInt64() & prohibitedExtendedStyle) == 0;
+        }
+    }
+
+    public void EnforceBorderlessStyle()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ConfigureUtilityStyles(IsNoActivate);
+        ConfigureBorderlessStyle();
+        SuppressDwmBorder();
+    }
 
     public void SetNoActivate(bool noActivate)
     {
@@ -109,7 +146,11 @@ public sealed class NativeOverlayWindow : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         SetNoActivate(noActivate);
-        ApplyRoundedRegion(bounds.Width, bounds.Height, cornerRadius);
+        // AppWindow/OverlappedPresenter can restore native frame bits when the
+        // window is shown. Enforce borderless utility chrome after that step.
+        ConfigureBorderlessStyle();
+        SuppressDwmBorder();
+        ApplyConfiguredRegion(bounds.Width, bounds.Height, cornerRadius);
 
         // Showing an overlay should never take focus merely because it appeared.
         // WS_EX_NOACTIVATE remains a separate choice for status-only overlays.
@@ -128,6 +169,10 @@ public sealed class NativeOverlayWindow : IDisposable
         }
 
         _ = ShowWindow(_windowHandle, ShowNoActivate);
+        // ShowWindow can cause the presenter to restore overlapped-window frame
+        // bits once more, so make the visible HWND definitively borderless.
+        ConfigureBorderlessStyle();
+        SuppressDwmBorder();
     }
 
     public void UpdateRoundedRegion(int cornerRadius)
@@ -135,6 +180,7 @@ public sealed class NativeOverlayWindow : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (GetWindowRect(_windowHandle, out NativeRectangle rectangle))
         {
+            _logicalRegionShapes = null;
             ApplyRoundedRegion(
                 Math.Max(1, rectangle.Right - rectangle.Left),
                 Math.Max(1, rectangle.Bottom - rectangle.Top),
@@ -142,12 +188,23 @@ public sealed class NativeOverlayWindow : IDisposable
         }
     }
 
-    public void BeginDrag()
+    /// <summary>
+    /// Restricts the HWND to its intended visible surfaces. This prevents
+    /// transparent WinUI pixels from revealing an opaque swap-chain host.
+    /// </summary>
+    public void SetLogicalRegionShapes(IReadOnlyList<OverlayRegionShape> shapes)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _lastHitTest = HitTestCaption;
-        _ = ReleaseCapture();
-        _ = SendMessage(_windowHandle, 0x00A1, new nint(HitTestCaption), nint.Zero);
+        ArgumentNullException.ThrowIfNull(shapes);
+        if (shapes.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one overlay region shape is required.",
+                nameof(shapes));
+        }
+
+        _logicalRegionShapes = shapes.ToArray();
+        ApplyConfiguredRegionForCurrentBounds();
     }
 
     public bool ActivateForInteraction()
@@ -201,179 +258,16 @@ public sealed class NativeOverlayWindow : IDisposable
         }
 
         Hide();
-        if (_subclassProcedure is not null)
+        if (_subclassAttached)
         {
             _ = RemoveWindowSubclass(
                 _windowHandle,
                 _subclassProcedure,
-                OverlaySubclassId);
+                SubclassId);
+            _subclassAttached = false;
         }
 
         _disposed = true;
-    }
-
-    private nint WindowSubclassProcedure(
-        nint windowHandle,
-        uint message,
-        nint wParam,
-        nint lParam,
-        nuint subclassId,
-        nint referenceData)
-    {
-        try
-        {
-            switch (message)
-            {
-                case WindowMessageNonClientCalculateSize when _isResizable:
-                    return nint.Zero;
-                case WindowMessageNonClientHitTest when _isResizable:
-                    int hitTest = GetResizeHitTest(lParam);
-                    if (hitTest != HitTestClient)
-                    {
-                        _lastHitTest = hitTest;
-                        return new nint(hitTest);
-                    }
-
-                    break;
-                case WindowMessageGetMinMaxInfo when _isResizable:
-                    ApplyResizeConstraints(lParam);
-                    return nint.Zero;
-                case WindowMessageNonClientLeftButtonDown when
-                    _isResizable && IsResizeHitTest((int)wParam) && IsNoActivate:
-                    SetNoActivate(false);
-                    _ = SetForegroundWindow(_windowHandle);
-                    _ = ReleaseCapture();
-                    _ = SendMessage(
-                        windowHandle,
-                        WindowMessageSystemCommand,
-                        new nint(SystemCommandSize | GetResizeDirection((int)wParam)),
-                        lParam);
-                    return nint.Zero;
-                case WindowMessageEnterSizeMove:
-                    _isInteracting = true;
-                    break;
-                case WindowMessageExitSizeMove:
-                    _isInteracting = false;
-                    MoveOrResizeCompleted?.Invoke(this, EventArgs.Empty);
-                    break;
-            }
-        }
-        catch (Exception)
-        {
-            _isInteracting = false;
-        }
-
-        return DefSubclassProc(windowHandle, message, wParam, lParam);
-    }
-
-    private int GetResizeHitTest(nint lParam)
-    {
-        if (!GetWindowRect(_windowHandle, out NativeRectangle rectangle))
-        {
-            return HitTestClient;
-        }
-
-        long packed = lParam.ToInt64();
-        int x = unchecked((short)(packed & 0xFFFF));
-        int y = unchecked((short)((packed >> 16) & 0xFFFF));
-        int dpi = (int)Math.Max(96u, GetDpiForWindow(_windowHandle));
-        int edge = Math.Max(6, (int)Math.Round(8d * dpi / 96d));
-        int corner = Math.Max(edge * 2, (int)Math.Round(18d * dpi / 96d));
-
-        bool left = x >= rectangle.Left && x < rectangle.Left + edge;
-        bool right = x <= rectangle.Right && x > rectangle.Right - edge;
-        bool top = y >= rectangle.Top && y < rectangle.Top + edge;
-        bool bottom = y <= rectangle.Bottom && y > rectangle.Bottom - edge;
-        bool nearLeftCorner = x < rectangle.Left + corner;
-        bool nearRightCorner = x > rectangle.Right - corner;
-        bool nearTopCorner = y < rectangle.Top + corner;
-        bool nearBottomCorner = y > rectangle.Bottom - corner;
-
-        if ((left && nearTopCorner) || (top && nearLeftCorner))
-        {
-            return HitTestTopLeft;
-        }
-
-        if ((right && nearTopCorner) || (top && nearRightCorner))
-        {
-            return HitTestTopRight;
-        }
-
-        if ((left && nearBottomCorner) || (bottom && nearLeftCorner))
-        {
-            return HitTestBottomLeft;
-        }
-
-        if ((right && nearBottomCorner) || (bottom && nearRightCorner))
-        {
-            return HitTestBottomRight;
-        }
-
-        if (left)
-        {
-            return HitTestLeft;
-        }
-
-        if (right)
-        {
-            return HitTestRight;
-        }
-
-        if (top)
-        {
-            return HitTestTop;
-        }
-
-        return bottom ? HitTestBottom : HitTestClient;
-    }
-
-    private static bool IsResizeHitTest(int hitTest) => hitTest is
-        HitTestLeft or
-        HitTestRight or
-        HitTestTop or
-        HitTestTopLeft or
-        HitTestTopRight or
-        HitTestBottom or
-        HitTestBottomLeft or
-        HitTestBottomRight;
-
-    private static int GetResizeDirection(int hitTest) => hitTest switch
-    {
-        HitTestLeft => 1,
-        HitTestRight => 2,
-        HitTestTop => 3,
-        HitTestTopLeft => 4,
-        HitTestTopRight => 5,
-        HitTestBottom => 6,
-        HitTestBottomLeft => 7,
-        HitTestBottomRight => 8,
-        _ => throw new ArgumentOutOfRangeException(nameof(hitTest)),
-    };
-
-    private void ApplyResizeConstraints(nint lParam)
-    {
-        MinMaxInfo info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
-        uint dpi = Math.Max(96u, GetDpiForWindow(_windowHandle));
-        info.MinimumTrackSize.X = Math.Max(
-            1,
-            (int)Math.Round(_minimumLogicalWidth * dpi / 96d));
-        info.MinimumTrackSize.Y = Math.Max(
-            1,
-            (int)Math.Round(_minimumLogicalHeight * dpi / 96d));
-
-        nint monitor = MonitorFromWindow(_windowHandle, MonitorDefaultToNearest);
-        MonitorInfo monitorInfo = MonitorInfo.Create();
-        if (monitor != nint.Zero && GetMonitorInfo(monitor, ref monitorInfo))
-        {
-            info.MaximumTrackSize.X = Math.Max(
-                info.MinimumTrackSize.X,
-                monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left);
-            info.MaximumTrackSize.Y = Math.Max(
-                info.MinimumTrackSize.Y,
-                monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top);
-        }
-
-        Marshal.StructureToPtr(info, lParam, fDeleteOld: false);
     }
 
     private void ConfigureUtilityStyles(bool noActivate)
@@ -381,7 +275,10 @@ public sealed class NativeOverlayWindow : IDisposable
         nint stylePointer = GetWindowLongPtr(_windowHandle, ExtendedStyleIndex);
         long style = stylePointer.ToInt64();
         style |= ExtendedStyleToolWindow;
-        style &= ~ExtendedStyleAppWindow;
+        style &= ~(ExtendedStyleAppWindow |
+                   ExtendedStyleWindowEdge |
+                   ExtendedStyleClientEdge |
+                   ExtendedStyleStaticEdge);
         if (noActivate)
         {
             style |= ExtendedStyleNoActivate;
@@ -411,6 +308,24 @@ public sealed class NativeOverlayWindow : IDisposable
         IsNoActivate = noActivate;
     }
 
+    private void ConfigureBorderlessStyle()
+    {
+        nint stylePointer = GetWindowLongPtr(_windowHandle, WindowStyleIndex);
+        long style = stylePointer.ToInt64();
+        long removableStyle = WindowStyleCaption |
+                              WindowStyleSystemMenu |
+                              WindowStyleMinimizeBox |
+                              WindowStyleMaximizeBox;
+        if (!_allowResize)
+        {
+            removableStyle |= WindowStyleThickFrame;
+        }
+
+        style &= ~removableStyle;
+        _ = SetWindowLongPtr(_windowHandle, WindowStyleIndex, new nint(style));
+        RefreshFrame();
+    }
+
     private void RefreshFrame()
     {
         _ = SetWindowPos(
@@ -428,12 +343,101 @@ public sealed class NativeOverlayWindow : IDisposable
 
     private void SuppressDwmBorder()
     {
+        uint nonClientRendering = DwmNcRenderingDisabled;
+        _ = DwmSetWindowAttribute(
+            _windowHandle,
+            DwmWindowAttributeNcRenderingPolicy,
+            ref nonClientRendering,
+            sizeof(uint));
         uint borderColor = DwmColorNone;
         _ = DwmSetWindowAttribute(
             _windowHandle,
             DwmWindowAttributeBorderColor,
             ref borderColor,
             sizeof(uint));
+    }
+
+    private void ApplyConfiguredRegionForCurrentBounds()
+    {
+        if (GetWindowRect(_windowHandle, out NativeRectangle rectangle))
+        {
+            ApplyConfiguredRegion(
+                Math.Max(1, rectangle.Right - rectangle.Left),
+                Math.Max(1, rectangle.Bottom - rectangle.Top),
+                cornerRadius: 1);
+        }
+    }
+
+    private void ApplyConfiguredRegion(int width, int height, int cornerRadius)
+    {
+        if (_logicalRegionShapes is not { Length: > 0 } shapes)
+        {
+            ApplyRoundedRegion(width, height, cornerRadius);
+            return;
+        }
+
+        double scale = Math.Max(96, GetDpiForWindow(_windowHandle)) / 96d;
+        nint composite = nint.Zero;
+        try
+        {
+            foreach (OverlayRegionShape shape in shapes)
+            {
+                int left = (int)Math.Round(shape.X * scale);
+                int top = (int)Math.Round(shape.Y * scale);
+                int right = left + Math.Max(1, (int)Math.Round(shape.Width * scale));
+                int bottom = top + Math.Max(1, (int)Math.Round(shape.Height * scale));
+                int radius = Math.Max(
+                    1,
+                    (int)Math.Round(shape.CornerRadius * scale) * 2);
+                nint part = shape.IsEllipse
+                    ? CreateEllipticRgn(left, top, right + 1, bottom + 1)
+                    : CreateRoundRectRgn(
+                        left,
+                        top,
+                        right + 1,
+                        bottom + 1,
+                        radius,
+                        radius);
+                if (part == nint.Zero)
+                {
+                    throw new Win32Exception(
+                        Marshal.GetLastWin32Error(),
+                        "The overlay region could not be created.");
+                }
+
+                if (composite == nint.Zero)
+                {
+                    composite = part;
+                    continue;
+                }
+
+                int combineResult = CombineRgn(composite, composite, part, RegionOr);
+                _ = DeleteObject(part);
+                if (combineResult == RegionError)
+                {
+                    throw new Win32Exception(
+                        Marshal.GetLastWin32Error(),
+                        "The overlay region could not be combined.");
+                }
+            }
+
+            if (SetWindowRgn(_windowHandle, composite, true) == 0)
+            {
+                throw new Win32Exception(
+                    Marshal.GetLastWin32Error(),
+                    "The overlay shape could not be applied.");
+            }
+
+            // SetWindowRgn owns the region after a successful call.
+            composite = nint.Zero;
+        }
+        finally
+        {
+            if (composite != nint.Zero)
+            {
+                _ = DeleteObject(composite);
+            }
+        }
     }
 
     private void ApplyRoundedRegion(int width, int height, int cornerRadius)
@@ -450,6 +454,79 @@ public sealed class NativeOverlayWindow : IDisposable
             _ = DeleteObject(region);
             throw new Win32Exception(Marshal.GetLastWin32Error(), "The overlay shape could not be applied.");
         }
+    }
+
+    private nint WindowProcedure(
+        nint windowHandle,
+        uint message,
+        nuint wParam,
+        nint lParam,
+        nuint subclassId,
+        nuint referenceData)
+    {
+        if (_allowResize)
+        {
+            switch (message)
+            {
+                case WmNcCalcSize:
+                    // Retain WS_THICKFRAME for the native size loop while
+                    // making the complete window client-rendered.
+                    return nint.Zero;
+                case WmNcPaint:
+                    // The shell paints every visible pixel. Suppress the
+                    // classic tracking frame that USER can restore after a
+                    // custom title-bar move.
+                    return nint.Zero;
+                case WmNcActivate:
+                    // Acknowledge activation without repainting non-client
+                    // chrome; interactive controls still activate normally.
+                    return new nint(1);
+                case WmGetMinMaxInfo:
+                    ApplyResizeConstraints(lParam);
+                    break;
+            }
+        }
+
+        if (message == WmNcDestroy)
+        {
+            _ = RemoveWindowSubclass(windowHandle, _subclassProcedure, subclassId);
+            _subclassAttached = false;
+        }
+
+        return DefSubclassProc(windowHandle, message, wParam, lParam);
+    }
+
+    private void ApplyResizeConstraints(nint lParam)
+    {
+        if (lParam == nint.Zero)
+        {
+            return;
+        }
+
+        MinMaxInfo info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        int dpi = Math.Max(96, unchecked((int)GetDpiForWindow(_windowHandle)));
+        info.MinimumTrackSize.X = Math.Max(
+            1,
+            (int)Math.Round(_minimumLogicalWidth * dpi / 96d));
+        info.MinimumTrackSize.Y = Math.Max(
+            1,
+            (int)Math.Round(_minimumLogicalHeight * dpi / 96d));
+
+        nint monitor = MonitorFromWindow(_windowHandle, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (monitor != nint.Zero && GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            int workWidth = monitorInfo.Work.Right - monitorInfo.Work.Left;
+            int workHeight = monitorInfo.Work.Bottom - monitorInfo.Work.Top;
+            info.MaximumPosition.X = monitorInfo.Work.Left - monitorInfo.Monitor.Left;
+            info.MaximumPosition.Y = monitorInfo.Work.Top - monitorInfo.Monitor.Top;
+            info.MaximumSize.X = workWidth;
+            info.MaximumSize.Y = workHeight;
+            info.MaximumTrackSize.X = workWidth;
+            info.MaximumTrackSize.Y = workHeight;
+        }
+
+        Marshal.StructureToPtr(info, lParam, false);
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -481,21 +558,21 @@ public sealed class NativeOverlayWindow : IDisposable
     [StructLayout(LayoutKind.Sequential)]
     private struct MonitorInfo
     {
-        public uint Size;
+        public int Size;
         public NativeRectangle Monitor;
-        public NativeRectangle WorkArea;
+        public NativeRectangle Work;
         public uint Flags;
-
-        public static MonitorInfo Create() => new() { Size = (uint)Marshal.SizeOf<MonitorInfo>() };
     }
+
+    private const uint MonitorDefaultToNearest = 0x00000002;
 
     private delegate nint SubclassProcedure(
         nint windowHandle,
         uint message,
-        nint wParam,
+        nuint wParam,
         nint lParam,
         nuint subclassId,
-        nint referenceData);
+        nuint referenceData);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     private static extern nint GetWindowLongPtr(nint windowHandle, int index);
@@ -527,47 +604,18 @@ public sealed class NativeOverlayWindow : IDisposable
     private static extern bool GetWindowRect(nint windowHandle, out NativeRectangle rectangle);
 
     [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(nint windowHandle);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll")]
-    private static extern nint SendMessage(nint windowHandle, uint message, nint wParam, nint lParam);
-
-    [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(nint windowHandle);
 
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint windowHandle, uint flags);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo monitorInfo);
 
-    [DllImport("comctl32.dll", SetLastError = true)]
+    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowSubclass(
-        nint windowHandle,
-        SubclassProcedure procedure,
-        nuint subclassId,
-        nint referenceData);
-
-    [DllImport("comctl32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RemoveWindowSubclass(
-        nint windowHandle,
-        SubclassProcedure procedure,
-        nuint subclassId);
-
-    [DllImport("comctl32.dll")]
-    private static extern nint DefSubclassProc(
-        nint windowHandle,
-        uint message,
-        nint wParam,
-        nint lParam);
+    private static extern bool SetForegroundWindow(nint windowHandle);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(
@@ -585,10 +633,41 @@ public sealed class NativeOverlayWindow : IDisposable
         int ellipseWidth,
         int ellipseHeight);
 
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern nint CreateEllipticRgn(int left, int top, int right, int bottom);
+
+    private const int RegionError = 0;
+    private const int RegionOr = 2;
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern int CombineRgn(nint destination, nint source1, nint source2, int mode);
+
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SetWindowRgn(nint windowHandle, nint region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
 
     [DllImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(nint handle);
+
+    [DllImport("comctl32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowSubclass(
+        nint windowHandle,
+        SubclassProcedure procedure,
+        nuint subclassId,
+        nuint referenceData);
+
+    [DllImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RemoveWindowSubclass(
+        nint windowHandle,
+        SubclassProcedure procedure,
+        nuint subclassId);
+
+    [DllImport("comctl32.dll")]
+    private static extern nint DefSubclassProc(
+        nint windowHandle,
+        uint message,
+        nuint wParam,
+        nint lParam);
 }
