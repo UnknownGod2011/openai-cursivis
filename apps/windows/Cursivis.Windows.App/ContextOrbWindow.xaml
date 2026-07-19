@@ -92,14 +92,11 @@
                     BorderBrush="{ThemeResource OrbCoreBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="59">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
                     <Grid Margin="10,11,10,9">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="20" />
                             <RowDefinition Height="*" />
-                            <RowDefinition Height="18" />
+                            <RowDefinition Height="24" />
                         </Grid.RowDefinitions>
 
                         <Border
@@ -151,8 +148,10 @@
                             AutomationProperties.AccessibilityView="Raw"
                             FontSize="8"
                             Foreground="{ThemeResource OverlayMutedTextBrush}"
+                            MaxLines="2"
                             TextAlignment="Center"
                             TextTrimming="CharacterEllipsis"
+                            TextWrapping="WrapWholeWords"
                             Visibility="Collapsed" />
 
                     </Grid>

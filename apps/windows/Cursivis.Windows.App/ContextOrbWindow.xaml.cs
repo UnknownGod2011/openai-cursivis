@@ -94,8 +94,27 @@ public sealed partial class ContextOrbWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(detail);
         SetGuidedPanelVisible(false);
         DetailText.Visibility = Visibility.Visible;
+        ApplyState(state, status, detail, animateLiveState: true);
+        StateRing.Opacity = Math.Clamp(0.64 + (Math.Clamp(audioLevel, 0, 1) * 0.18), 0, 0.82);
+        if (!_overlay.IsVisible)
+        {
+            ShowWithoutActivation();
+        }
+    }
+
+    public void ShowDictationState(
+        OrbPresentationState state,
+        string status,
+        string detail)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(status);
+        ArgumentException.ThrowIfNullOrWhiteSpace(detail);
+        SetGuidedPanelVisible(false);
+        DetailText.Visibility = Visibility.Visible;
         ApplyState(state, status, detail);
-        StateRing.Opacity = Math.Clamp(0.68 + (Math.Clamp(audioLevel, 0, 1) * 0.32), 0, 1);
+        // Smart Dictation is a bounded one-shot workflow. Keep the original
+        // static orb treatment; animated audio glow is exclusive to Live Mode.
+        StateRing.Opacity = 0.72;
         if (!_overlay.IsVisible)
         {
             ShowWithoutActivation();
@@ -126,7 +145,11 @@ public sealed partial class ContextOrbWindow : Window
         _overlay.Hide();
     }
 
-    private void ApplyState(OrbPresentationState state, string status, string detail)
+    private void ApplyState(
+        OrbPresentationState state,
+        string status,
+        string detail,
+        bool animateLiveState = false)
     {
         StatusText.Text = status.Trim();
         DetailText.Text = detail.Trim();
@@ -140,7 +163,7 @@ public sealed partial class ContextOrbWindow : Window
         SetStateVisual(state);
         ApplyVisibleWindowRegion();
         AutomationProperties.SetName(OverlayRoot, $"Cursivis {status}. {detail}");
-        UpdateMotion(state);
+        UpdateMotion(state, animateLiveState);
     }
 
     private void ShowWithoutActivation()
@@ -213,13 +236,14 @@ public sealed partial class ContextOrbWindow : Window
         _borderlessFrames = 0;
     }
 
-    private void UpdateMotion(OrbPresentationState state)
+    private void UpdateMotion(OrbPresentationState state, bool animateLiveState)
     {
         Visual visual = ElementCompositionPreview.GetElementVisual(StateRing);
         visual.StopAnimation(nameof(Visual.Scale));
         visual.Scale = Vector3.One;
 
-        if (state is not (
+        if (!animateLiveState ||
+            state is not (
                 OrbPresentationState.Listening or
                 OrbPresentationState.Thinking or
                 OrbPresentationState.Generating or
@@ -234,7 +258,7 @@ public sealed partial class ContextOrbWindow : Window
         Compositor compositor = visual.Compositor;
         Vector3KeyFrameAnimation pulse = compositor.CreateVector3KeyFrameAnimation();
         pulse.InsertKeyFrame(0, Vector3.One);
-        pulse.InsertKeyFrame(0.5f, new Vector3(1.1f, 1.1f, 1));
+        pulse.InsertKeyFrame(0.5f, new Vector3(1.035f, 1.035f, 1));
         pulse.InsertKeyFrame(1, Vector3.One);
         pulse.Duration = TimeSpan.FromMilliseconds(state == OrbPresentationState.Listening ? 760 : 1100);
         pulse.IterationBehavior = AnimationIterationBehavior.Forever;

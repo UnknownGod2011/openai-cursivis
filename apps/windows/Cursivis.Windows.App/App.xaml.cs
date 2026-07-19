@@ -17,6 +17,17 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     public static AppRuntime? CurrentRuntime => (Microsoft.UI.Xaml.Application.Current as App)?._runtime;
 
+    internal static void ShowSettingsWindow()
+    {
+        if (Microsoft.UI.Xaml.Application.Current is not App app ||
+            app._window is not MainWindow mainWindow)
+        {
+            return;
+        }
+
+        _ = mainWindow.DispatcherQueue.TryEnqueue(mainWindow.ShowForActivation);
+    }
+
     public App()
     {
         InitializeComponent();

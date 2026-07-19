@@ -32,25 +32,57 @@ public sealed partial class HotkeysPage : Page
             HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
         bool takeActionActive = runtime.DirectTakeActionHotkeyStatus.Status is
             HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool dictationActive = runtime.SmartDictationHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool liveModeActive = runtime.LiveModeHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool quickTaskActive = runtime.QuickTaskHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+        bool settingsActive = runtime.SettingsHotkeyStatus.Status is
+            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
         if (contextActive)
         {
-            ContextTriggerRecorder.ActiveChord = "Ctrl+Alt+O";
+            ContextTriggerRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.ContextTriggerCommand);
             ContextTriggerRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
         }
 
         if (cancelActive)
         {
-            CancelRecorder.ActiveChord = "Ctrl+Alt+Escape";
+            CancelRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.CancelCommand);
             CancelRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
         }
 
         if (takeActionActive)
         {
-            TakeActionRecorder.ActiveChord = "Ctrl+Alt+I";
+            TakeActionRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.DirectTakeActionCommand);
             TakeActionRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
         }
 
-        if (contextActive && cancelActive && takeActionActive)
+        if (dictationActive)
+        {
+            DictationRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.SmartDictationCommand);
+            DictationRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (liveModeActive)
+        {
+            LiveModeRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.RealtimeLiveModeCommand);
+            LiveModeRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (quickTaskActive)
+        {
+            QuickTaskRecorder.ActiveChord = runtime.QuickTaskActiveChord;
+            QuickTaskRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (settingsActive)
+        {
+            SettingsRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.OpenSettingsCommand);
+            SettingsRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+        }
+
+        if (contextActive && cancelActive && takeActionActive && dictationActive && liveModeActive && quickTaskActive && settingsActive)
         {
             HotkeysHeader.StatusText = ResourceText.Get("HotkeysActiveStatus");
             HotkeysHeader.StatusDetail = ResourceText.Get("HotkeysActiveStatusDetail");
@@ -71,7 +103,7 @@ public sealed partial class HotkeysPage : Page
         SettingsRecorder,
     ];
 
-    private void OnCandidateCaptured(object? sender, HotkeyCandidateEventArgs args)
+    private async void OnCandidateCaptured(object? sender, HotkeyCandidateEventArgs args)
     {
         if (sender is not HotkeyRecorder recorder)
         {
@@ -87,18 +119,109 @@ public sealed partial class HotkeysPage : Page
             return;
         }
 
-        HotkeyPageStatus.Text = ResourceText.Get("HotkeyCandidatePageStatus");
+        AppRuntime? runtime = App.CurrentRuntime;
+        string? command = GetCommand(recorder);
+        if (runtime is null || command is null)
+        {
+            HotkeyPageStatus.Text = ResourceText.Get("HotkeyCandidatePageStatus");
+            return;
+        }
+
+        try
+        {
+            HotkeyUpdateResult result = await runtime.UpdateHotkeyAsync(command, args.Chord);
+            if (result.Status is HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive)
+            {
+                recorder.ActiveChord = result.ActiveChord?.ToString() ?? args.Chord;
+                recorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+                HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationSucceededPageStatus");
+                return;
+            }
+
+            recorder.ActiveChord = runtime.GetActiveHotkeyChord(command);
+            recorder.StatusText = ResourceText.Get("QuickTaskHotkeyConflict");
+            HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationFailedPageStatus");
+        }
+        catch (ArgumentException)
+        {
+            recorder.SetExternalValidation(ResourceText.Get("HotkeyReservedConflict"));
+            HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationFailedPageStatus");
+        }
     }
 
-    private void OnRestoreDefaultsClicked(object sender, RoutedEventArgs args)
+    private async void OnRestoreDefaultsClicked(object sender, RoutedEventArgs args)
     {
-        ContextTriggerRecorder.RestoreConfiguredChord("Ctrl+Alt+O");
-        LiveModeRecorder.RestoreConfiguredChord("Ctrl+Alt+P");
-        TakeActionRecorder.RestoreConfiguredChord("Ctrl+Alt+I");
-        DictationRecorder.RestoreConfiguredChord("Ctrl+Alt+U");
-        QuickTaskRecorder.RestoreConfiguredChord("Ctrl+Alt+Y");
-        CancelRecorder.RestoreConfiguredChord("Ctrl+Alt+Escape");
-        SettingsRecorder.RestoreConfiguredChord("Ctrl+Alt+S");
-        HotkeyPageStatus.Text = ResourceText.Get("HotkeyDefaultsStagedStatus");
+        (HotkeyRecorder Recorder, string Chord)[] defaults =
+        [
+            (ContextTriggerRecorder, "Ctrl+Alt+O"),
+            (LiveModeRecorder, "Ctrl+Alt+P"),
+            (TakeActionRecorder, "Ctrl+Alt+I"),
+            (DictationRecorder, "Ctrl+Alt+U"),
+            (QuickTaskRecorder, "Ctrl+Alt+Y"),
+            (CancelRecorder, "Ctrl+Alt+Escape"),
+            (SettingsRecorder, "Ctrl+Alt+S"),
+        ];
+        AppRuntime? runtime = App.CurrentRuntime;
+        bool allRegistered = runtime is not null;
+        foreach ((HotkeyRecorder recorder, string chord) in defaults)
+        {
+            recorder.RestoreConfiguredChord(chord);
+            string? command = GetCommand(recorder);
+            if (runtime is null || command is null)
+            {
+                allRegistered = false;
+                continue;
+            }
+
+            HotkeyUpdateResult result = await runtime.UpdateHotkeyAsync(command, chord);
+            bool registered = result.Status is HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+            allRegistered &= registered;
+            recorder.ActiveChord = result.ActiveChord?.ToString() ?? runtime.GetActiveHotkeyChord(command);
+            recorder.StatusText = registered
+                ? ResourceText.Get("HotkeyRegisteredStatus")
+                : ResourceText.Get("QuickTaskHotkeyConflict");
+        }
+
+        HotkeyPageStatus.Text = ResourceText.Get(
+            allRegistered
+                ? "HotkeyDefaultsRegisteredStatus"
+                : "HotkeyRegistrationFailedPageStatus");
+    }
+
+    private string? GetCommand(HotkeyRecorder recorder)
+    {
+        if (ReferenceEquals(recorder, ContextTriggerRecorder))
+        {
+            return AppRuntime.ContextTriggerCommand;
+        }
+
+        if (ReferenceEquals(recorder, LiveModeRecorder))
+        {
+            return AppRuntime.RealtimeLiveModeCommand;
+        }
+
+        if (ReferenceEquals(recorder, TakeActionRecorder))
+        {
+            return AppRuntime.DirectTakeActionCommand;
+        }
+
+        if (ReferenceEquals(recorder, DictationRecorder))
+        {
+            return AppRuntime.SmartDictationCommand;
+        }
+
+        if (ReferenceEquals(recorder, QuickTaskRecorder))
+        {
+            return AppRuntime.QuickTaskCommand;
+        }
+
+        if (ReferenceEquals(recorder, CancelRecorder))
+        {
+            return AppRuntime.CancelCommand;
+        }
+
+        return ReferenceEquals(recorder, SettingsRecorder)
+            ? AppRuntime.OpenSettingsCommand
+            : null;
     }
 }

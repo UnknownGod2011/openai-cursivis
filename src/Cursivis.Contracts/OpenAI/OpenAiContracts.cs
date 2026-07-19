@@ -65,7 +65,14 @@ public sealed record TranscriptionRequest(
 public sealed record TranscriptionResult(
     bool Succeeded,
     string? Text,
-    OpenAiFailure? Failure);
+    OpenAiFailure? Failure)
+{
+    public static TranscriptionResult Success(string text) =>
+        new(true, text, null);
+
+    public static TranscriptionResult Failed(OpenAiFailure failure) =>
+        new(false, null, failure);
+}
 
 public enum RealtimeClientEventKind
 {

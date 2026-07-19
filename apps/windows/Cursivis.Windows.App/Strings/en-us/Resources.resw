@@ -427,6 +427,9 @@
   <data name="HotkeyDuplicatePageStatus" xml:space="preserve"><value>Resolve the duplicate before registration can be attempted.</value></data>
   <data name="HotkeyCandidatePageStatus" xml:space="preserve"><value>Candidate captured locally. No global shortcut changed.</value></data>
   <data name="HotkeyDefaultsStagedStatus" xml:space="preserve"><value>Default candidates restored. No global shortcut changed.</value></data>
+  <data name="HotkeyRegistrationSucceededPageStatus" xml:space="preserve"><value>The global shortcut is active and saved.</value></data>
+  <data name="HotkeyRegistrationFailedPageStatus" xml:space="preserve"><value>Windows could not activate that shortcut. The previous shortcut remains active.</value></data>
+  <data name="HotkeyDefaultsRegisteredStatus" xml:space="preserve"><value>Default shortcuts are active and saved.</value></data>
 
   <data name="VoiceMicrophoneCard.Header" xml:space="preserve"><value>Microphone</value></data>
   <data name="VoiceMicrophoneCard.Description" xml:space="preserve"><value>A real endpoint and exclusive Settings test lease are required before the meter or audio test can run.</value></data>

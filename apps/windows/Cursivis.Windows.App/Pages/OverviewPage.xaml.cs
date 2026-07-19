@@ -24,8 +24,10 @@ public sealed partial class OverviewPage : Page
         bool hotkeysActive = IsActive(runtime.ContextHotkeyStatus) &&
                              IsActive(runtime.QuickTaskHotkeyStatus) &&
                              IsActive(runtime.DirectTakeActionHotkeyStatus) &&
+                             IsActive(runtime.SmartDictationHotkeyStatus) &&
                              IsActive(runtime.LiveModeHotkeyStatus) &&
-                             IsActive(runtime.CancelHotkeyStatus);
+                             IsActive(runtime.CancelHotkeyStatus) &&
+                             IsActive(runtime.SettingsHotkeyStatus);
 
         if (hasCredential)
         {

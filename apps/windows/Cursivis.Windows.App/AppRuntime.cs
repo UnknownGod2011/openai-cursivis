@@ -1,5 +1,6 @@
 using Cursivis.Application.Context;
 using Cursivis.Application.Actions;
+using Cursivis.Application.Dictation;
 using Cursivis.Application.OpenAI;
 using Cursivis.Application.Presentation;
 using Cursivis.Application.QuickTasks;
@@ -31,8 +32,10 @@ public sealed class AppRuntime : IAsyncDisposable
     public const string ContextTriggerCommand = "context-trigger";
     public const string QuickTaskCommand = "custom-quick-task";
     public const string DirectTakeActionCommand = "direct-take-action";
+    public const string SmartDictationCommand = "smart-dictation";
     public const string RealtimeLiveModeCommand = "realtime-live-mode";
     public const string CancelCommand = "cancel-emergency-stop";
+    public const string OpenSettingsCommand = "open-settings";
 
     private readonly Win32WindowMessageHook _messageHook;
     private readonly TransactionalHotkeyRegistrar _hotkeys;
@@ -43,14 +46,14 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly TakeActionController _takeActionController;
     private readonly LiveModeOverlayWindow _liveModeWindow;
     private readonly IRealtimeLiveModeService _liveMode;
+    private readonly ISmartDictationService _smartDictation;
     private readonly ILiveModeMemoryStore _liveModeMemory;
     private readonly NativePointerMonitor _pointerMonitor;
-    private readonly IForegroundWindowActivator _foregroundActivator;
     private readonly VersionedJsonSettingsStore<QuickTaskDefinition> _quickTaskStore;
     private readonly IQuickTaskFinalizationService _quickTaskFinalizer;
     private readonly object _quickTaskGate = new();
-    private readonly nint _mainWindowHandle;
     private CancellationTokenSource? _liveCompletionVisibilityCancellation;
+    private CancellationTokenSource? _dictationCompletionVisibilityCancellation;
     private QuickTaskDefinition _currentQuickTask;
     private bool _disposed;
 
@@ -67,18 +70,19 @@ public sealed class AppRuntime : IAsyncDisposable
         TakeActionController takeActionController,
         LiveModeOverlayWindow liveModeWindow,
         IRealtimeLiveModeService liveMode,
+        ISmartDictationService smartDictation,
         ILiveModeMemoryStore liveModeMemory,
         NativePointerMonitor pointerMonitor,
-        IForegroundWindowActivator foregroundActivator,
         VersionedJsonSettingsStore<QuickTaskDefinition> quickTaskStore,
         IQuickTaskFinalizationService quickTaskFinalizer,
         QuickTaskDefinition currentQuickTask,
-        nint mainWindowHandle,
         HotkeyUpdateResult contextHotkeyStatus,
         HotkeyUpdateResult quickTaskHotkeyStatus,
         HotkeyUpdateResult directTakeActionHotkeyStatus,
+        HotkeyUpdateResult smartDictationHotkeyStatus,
         HotkeyUpdateResult liveModeHotkeyStatus,
-        HotkeyUpdateResult cancelHotkeyStatus)
+        HotkeyUpdateResult cancelHotkeyStatus,
+        HotkeyUpdateResult settingsHotkeyStatus)
     {
         CredentialManager = credentialManager;
         ResponsesGateway = responsesGateway;
@@ -92,18 +96,19 @@ public sealed class AppRuntime : IAsyncDisposable
         _takeActionController = takeActionController;
         _liveModeWindow = liveModeWindow;
         _liveMode = liveMode;
+        _smartDictation = smartDictation;
         _liveModeMemory = liveModeMemory;
         _pointerMonitor = pointerMonitor;
-        _foregroundActivator = foregroundActivator;
         _quickTaskStore = quickTaskStore;
         _quickTaskFinalizer = quickTaskFinalizer;
         _currentQuickTask = currentQuickTask;
-        _mainWindowHandle = mainWindowHandle;
         ContextHotkeyStatus = contextHotkeyStatus;
         QuickTaskHotkeyStatus = quickTaskHotkeyStatus;
         DirectTakeActionHotkeyStatus = directTakeActionHotkeyStatus;
+        SmartDictationHotkeyStatus = smartDictationHotkeyStatus;
         LiveModeHotkeyStatus = liveModeHotkeyStatus;
         CancelHotkeyStatus = cancelHotkeyStatus;
+        SettingsHotkeyStatus = settingsHotkeyStatus;
         _messageHook.HotkeyPressed += OnHotkeyPressed;
         _resultWindow.SettingsRequested += OnSettingsRequested;
         _orbWindow.SettingsRequested += OnSettingsRequested;
@@ -111,6 +116,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _orbWindow.CancelRequested += OnOrbCancelRequested;
         _liveModeWindow.StopRequested += OnLiveModeRequested;
         _liveMode.SnapshotChanged += OnLiveModeSnapshotChanged;
+        _smartDictation.SnapshotChanged += OnSmartDictationSnapshotChanged;
         _resultWindow.ThemeRequested += OnThemeRequested;
         _resultWindow.OverlayVisibilityChanged += OnResultVisibilityChanged;
         _pointerMonitor.PointerPressed += OnPointerPressed;
@@ -128,9 +134,13 @@ public sealed class AppRuntime : IAsyncDisposable
 
     public HotkeyUpdateResult DirectTakeActionHotkeyStatus { get; }
 
+    public HotkeyUpdateResult SmartDictationHotkeyStatus { get; }
+
     public HotkeyUpdateResult LiveModeHotkeyStatus { get; }
 
     public HotkeyUpdateResult CancelHotkeyStatus { get; }
+
+    public HotkeyUpdateResult SettingsHotkeyStatus { get; }
 
     public BrowserBridgeSnapshot BrowserBridgeStatus => _browserBridge.Snapshot;
 
@@ -152,20 +162,43 @@ public sealed class AppRuntime : IAsyncDisposable
     }
 
     public string QuickTaskActiveChord =>
-        _hotkeys.TryGetActive(QuickTaskCommand, out ActiveHotkeyRegistration? registration)
+        GetActiveHotkeyChord(QuickTaskCommand);
+
+    public string GetActiveHotkeyChord(string commandName) =>
+        _hotkeys.TryGetActive(commandName, out ActiveHotkeyRegistration? registration)
             ? registration!.Chord.ToString()
             : string.Empty;
+
+    public async Task<HotkeyUpdateResult> UpdateHotkeyAsync(
+        string commandName,
+        string canonicalChord,
+        CancellationToken cancellationToken = default)
+    {
+        if (commandName is not (
+            ContextTriggerCommand or
+            QuickTaskCommand or
+            DirectTakeActionCommand or
+            SmartDictationCommand or
+            RealtimeLiveModeCommand or
+            CancelCommand or
+            OpenSettingsCommand))
+        {
+            throw new ArgumentOutOfRangeException(nameof(commandName));
+        }
+
+        if (!HotkeyChordParser.TryParse(canonicalChord, out Cursivis.Windows.Platform.Hotkeys.HotkeyChord chord))
+        {
+            throw new ArgumentException("The shortcut is invalid or reserved.", nameof(canonicalChord));
+        }
+
+        return await _hotkeys.UpdateAsync(commandName, chord, cancellationToken);
+    }
 
     public async Task<HotkeyUpdateResult> UpdateQuickTaskHotkeyAsync(
         string canonicalChord,
         CancellationToken cancellationToken = default)
     {
-        if (!HotkeyChordParser.TryParse(canonicalChord, out Cursivis.Windows.Platform.Hotkeys.HotkeyChord chord))
-        {
-            throw new ArgumentException("The Quick Task shortcut is invalid or reserved.", nameof(canonicalChord));
-        }
-
-        return await _hotkeys.UpdateAsync(QuickTaskCommand, chord, cancellationToken);
+        return await UpdateHotkeyAsync(QuickTaskCommand, canonicalChord, cancellationToken);
     }
 
     public Task<QuickTaskFinalizationResult> FinalizeQuickTaskAsync(
@@ -230,6 +263,7 @@ public sealed class AppRuntime : IAsyncDisposable
         var credentialManager = new WindowsOpenAiCredentialManager(secretStore);
         var credentialSource = new WindowsOpenAiCredentialSource(secretStore);
         IResponsesGateway responsesGateway = new OpenAiResponsesGateway(credentialSource);
+        ITranscriptionGateway transcriptionGateway = new OpenAiTranscriptionGateway(credentialSource);
         IRealtimeGateway realtimeGateway = new OpenAiRealtimeGateway(credentialSource);
         IContextTriggerService contextService = new ContextTriggerService(responsesGateway);
         IQuickTaskFinalizationService quickTaskFinalizer = new QuickTaskFinalizationService(responsesGateway);
@@ -315,6 +349,15 @@ public sealed class AppRuntime : IAsyncDisposable
             new LiveModeContextProvider(inputSettler, capture, foreground),
             new LiveModeToolExecutor(liveModeMemory, liveModeCapabilities),
             ModelCatalog.Realtime.Value);
+        var smartDictation = new SmartDictationService(
+            new WindowsDictationAudioCaptureFactory(),
+            new WindowsDictationTargetProvider(foreground),
+            transcriptionGateway,
+            responsesGateway,
+            insertion,
+            clipboard,
+            ModelCatalog.EconomyTranscription,
+            ModelCatalog.Balanced);
 
         var messageHook = new Win32WindowMessageHook(mainWindowHandle);
         var hotkeyPersister = new JsonHotkeyStatePersister(paths.HotkeysFile);
@@ -329,27 +372,51 @@ public sealed class AppRuntime : IAsyncDisposable
             virtualKey: 0x1B,
             nativeHotkeys);
 
+        Cursivis.Windows.Platform.Hotkeys.HotkeyChord LoadHotkey(
+            string command,
+            Cursivis.Windows.Platform.Hotkeys.HotkeyChord fallback) =>
+            hotkeyPersister.TryLoad(command, out Cursivis.Windows.Platform.Hotkeys.HotkeyChord persisted)
+                ? persisted
+                : fallback;
+
         HotkeyUpdateResult contextStatus = await hotkeys.RegisterInitialAsync(
             ContextTriggerCommand,
-            new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x4F));
-        Cursivis.Windows.Platform.Hotkeys.HotkeyChord quickTaskChord =
-            hotkeyPersister.TryLoad(QuickTaskCommand, out Cursivis.Windows.Platform.Hotkeys.HotkeyChord persistedQuickTaskChord)
-                ? persistedQuickTaskChord
-                : new Cursivis.Windows.Platform.Hotkeys.HotkeyChord(
-                    HotkeyModifiers.Control | HotkeyModifiers.Alt,
-                    0x59);
+            LoadHotkey(
+                ContextTriggerCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x4F)));
+        Cursivis.Windows.Platform.Hotkeys.HotkeyChord quickTaskChord = LoadHotkey(
+            QuickTaskCommand,
+            new Cursivis.Windows.Platform.Hotkeys.HotkeyChord(
+                HotkeyModifiers.Control | HotkeyModifiers.Alt,
+                0x59));
         HotkeyUpdateResult quickTaskStatus = await hotkeys.RegisterInitialAsync(
             QuickTaskCommand,
             quickTaskChord);
         HotkeyUpdateResult directTakeActionStatus = await hotkeys.RegisterInitialAsync(
             DirectTakeActionCommand,
-            new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x49));
+            LoadHotkey(
+                DirectTakeActionCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x49)));
+        HotkeyUpdateResult smartDictationStatus = await hotkeys.RegisterInitialAsync(
+            SmartDictationCommand,
+            LoadHotkey(
+                SmartDictationCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x55)));
         HotkeyUpdateResult liveModeStatus = await hotkeys.RegisterInitialAsync(
             RealtimeLiveModeCommand,
-            new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x50));
+            LoadHotkey(
+                RealtimeLiveModeCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x50)));
         HotkeyUpdateResult cancelStatus = await hotkeys.RegisterInitialAsync(
             CancelCommand,
-            new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x1B));
+            LoadHotkey(
+                CancelCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x1B)));
+        HotkeyUpdateResult settingsStatus = await hotkeys.RegisterInitialAsync(
+            OpenSettingsCommand,
+            LoadHotkey(
+                OpenSettingsCommand,
+                new HotkeyChord(HotkeyModifiers.Control | HotkeyModifiers.Alt, 0x53)));
 
         return new AppRuntime(
             credentialManager,
@@ -364,18 +431,19 @@ public sealed class AppRuntime : IAsyncDisposable
             takeActionController,
             liveModeWindow,
             liveMode,
+            smartDictation,
             liveModeMemory,
             pointerMonitor,
-            foregroundActivator,
             quickTaskStore,
             quickTaskFinalizer,
             quickTaskLoad.Value,
-            mainWindowHandle,
             contextStatus,
             quickTaskStatus,
             directTakeActionStatus,
+            smartDictationStatus,
             liveModeStatus,
-            cancelStatus);
+            cancelStatus,
+            settingsStatus);
     }
 
     public async ValueTask DisposeAsync()
@@ -389,6 +457,9 @@ public sealed class AppRuntime : IAsyncDisposable
         _liveCompletionVisibilityCancellation?.Cancel();
         _liveCompletionVisibilityCancellation?.Dispose();
         _liveCompletionVisibilityCancellation = null;
+        _dictationCompletionVisibilityCancellation?.Cancel();
+        _dictationCompletionVisibilityCancellation?.Dispose();
+        _dictationCompletionVisibilityCancellation = null;
         _messageHook.HotkeyPressed -= OnHotkeyPressed;
         _resultWindow.SettingsRequested -= OnSettingsRequested;
         _orbWindow.SettingsRequested -= OnSettingsRequested;
@@ -396,12 +467,14 @@ public sealed class AppRuntime : IAsyncDisposable
         _orbWindow.CancelRequested -= OnOrbCancelRequested;
         _liveModeWindow.StopRequested -= OnLiveModeRequested;
         _liveMode.SnapshotChanged -= OnLiveModeSnapshotChanged;
+        _smartDictation.SnapshotChanged -= OnSmartDictationSnapshotChanged;
         _resultWindow.ThemeRequested -= OnThemeRequested;
         _resultWindow.OverlayVisibilityChanged -= OnResultVisibilityChanged;
         _pointerMonitor.PointerPressed -= OnPointerPressed;
         _escapeDismissHotkey.Dispose();
         ContextTrigger.Dispose();
         _takeActionController.Dispose();
+        await _smartDictation.DisposeAsync();
         await _liveMode.DisposeAsync();
         await _browserBridge.DisposeAsync();
         _messageHook.Dispose();
@@ -441,10 +514,24 @@ public sealed class AppRuntime : IAsyncDisposable
             return;
         }
 
+        if (_hotkeys.TryGetActive(SmartDictationCommand, out ActiveHotkeyRegistration? smartDictation) &&
+            smartDictation?.RegistrationId == args.RegistrationId)
+        {
+            _ = ToggleSmartDictationAsync();
+            return;
+        }
+
         if (_hotkeys.TryGetActive(RealtimeLiveModeCommand, out ActiveHotkeyRegistration? liveMode) &&
             liveMode?.RegistrationId == args.RegistrationId)
         {
             _ = ToggleLiveModeAsync();
+            return;
+        }
+
+        if (_hotkeys.TryGetActive(OpenSettingsCommand, out ActiveHotkeyRegistration? settings) &&
+            settings?.RegistrationId == args.RegistrationId)
+        {
+            OnSettingsRequested(this, EventArgs.Empty);
             return;
         }
 
@@ -453,17 +540,19 @@ public sealed class AppRuntime : IAsyncDisposable
         {
             ContextTrigger.Cancel();
             _takeActionController.Cancel();
+            _ = _smartDictation.CancelAsync();
             _ = _liveMode.StopAsync();
         }
     }
 
     private void OnSettingsRequested(object? sender, EventArgs args)
     {
+        _ = _smartDictation.CancelAsync();
         _ = _liveMode.StopAsync();
         _resultWindow.Hide();
         _liveModeWindow.Hide();
         _orbWindow.Hide();
-        _ = _foregroundActivator.TryActivate(_mainWindowHandle);
+        App.ShowSettingsWindow();
     }
 
     private void OnThemeRequested(ElementTheme theme)
@@ -478,6 +567,12 @@ public sealed class AppRuntime : IAsyncDisposable
 
     private void OnOrbCancelRequested(object? sender, EventArgs args)
     {
+        if (_smartDictation.Snapshot.IsActive)
+        {
+            _ = _smartDictation.CancelAsync();
+            return;
+        }
+
         if (_liveMode.Snapshot.IsActive)
         {
             _ = _liveMode.StopAsync();
@@ -490,10 +585,89 @@ public sealed class AppRuntime : IAsyncDisposable
         {
             if (!_liveMode.Snapshot.IsActive)
             {
+                await _smartDictation.CancelAsync();
                 ContextTrigger.DismissTransientResult();
             }
 
             await _liveMode.ToggleAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task ToggleSmartDictationAsync()
+    {
+        try
+        {
+            if (!_smartDictation.Snapshot.IsActive)
+            {
+                await _liveMode.StopAsync();
+                ContextTrigger.DismissTransientResult();
+            }
+
+            await _smartDictation.ToggleAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnSmartDictationSnapshotChanged(SmartDictationSnapshot snapshot)
+    {
+        _ = _orbWindow.DispatcherQueue.TryEnqueue(() => ApplySmartDictationSnapshot(snapshot));
+    }
+
+    private void ApplySmartDictationSnapshot(SmartDictationSnapshot snapshot)
+    {
+        _dictationCompletionVisibilityCancellation?.Cancel();
+        _dictationCompletionVisibilityCancellation?.Dispose();
+        _dictationCompletionVisibilityCancellation = null;
+
+        OrbPresentationState orbState = snapshot.State switch
+        {
+            SmartDictationState.Listening => OrbPresentationState.Listening,
+            SmartDictationState.Transcribing or SmartDictationState.Polishing => OrbPresentationState.Thinking,
+            SmartDictationState.Inserting => OrbPresentationState.Executing,
+            SmartDictationState.Done => OrbPresentationState.Done,
+            SmartDictationState.Cancelled => OrbPresentationState.Cancelled,
+            SmartDictationState.Error => OrbPresentationState.Error,
+            _ => OrbPresentationState.Idle,
+        };
+        string detail = snapshot.State switch
+        {
+            SmartDictationState.Listening =>
+                $"Speak naturally · press again to finish · level {Math.Round(snapshot.AudioLevel * 100):0}%",
+            SmartDictationState.Transcribing => "Using OpenAI Audio Transcriptions",
+            SmartDictationState.Polishing => "Removing false starts and restoring punctuation",
+            SmartDictationState.Inserting => "Returning text to the original application",
+            SmartDictationState.Done when snapshot.Inserted => "Text inserted · use the app's Undo command to revert",
+            SmartDictationState.Done when snapshot.CopiedToClipboard => "The original target changed, so the text was copied",
+            SmartDictationState.Cancelled => "No text was inserted or copied",
+            SmartDictationState.Error => snapshot.SafeError ?? "Smart Dictation unavailable",
+            _ => snapshot.Status,
+        };
+        _orbWindow.ShowDictationState(orbState, snapshot.Status, detail);
+
+        if (snapshot.State is SmartDictationState.Done or SmartDictationState.Cancelled)
+        {
+            _dictationCompletionVisibilityCancellation = new CancellationTokenSource();
+            _ = HideCompletedDictationOrbAsync(_dictationCompletionVisibilityCancellation.Token);
+        }
+    }
+
+    private async Task HideCompletedDictationOrbAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(900), cancellationToken);
+            _ = _orbWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_smartDictation.Snapshot.IsActive)
+                {
+                    _orbWindow.Hide();
+                }
+            });
         }
         catch (OperationCanceledException)
         {

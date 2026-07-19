@@ -1,5 +1,4 @@
 using System.ClientModel;
-using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Cursivis.Application.Context;
@@ -168,7 +167,7 @@ public sealed partial class OpenAiResponsesGateway(
         }
         catch (ClientResultException exception)
         {
-            return StructuredResponseResult.Failed(Classify(exception));
+            return StructuredResponseResult.Failed(OpenAiFailureClassifier.Classify(exception));
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -246,54 +245,6 @@ public sealed partial class OpenAiResponsesGateway(
         {
             throw new ArgumentOutOfRangeException(nameof(request), "The request timeout is outside the supported range.");
         }
-    }
-
-    private static OpenAiFailure Classify(ClientResultException exception)
-    {
-        return exception.Status switch
-        {
-            (int)HttpStatusCode.Unauthorized => new(
-                OpenAiFailureKind.Authentication,
-                "OpenAI rejected the configured API key.",
-                false),
-            (int)HttpStatusCode.Forbidden => new(
-                OpenAiFailureKind.Permission,
-                "The OpenAI project does not permit this request or model.",
-                false),
-            (int)HttpStatusCode.NotFound => new(
-                OpenAiFailureKind.ModelUnavailable,
-                "The selected OpenAI model is not available to this project.",
-                false),
-            (int)HttpStatusCode.RequestTimeout => new(
-                OpenAiFailureKind.Timeout,
-                "The OpenAI request timed out.",
-                true),
-            (int)HttpStatusCode.TooManyRequests when IsQuotaFailure(exception) => new(
-                OpenAiFailureKind.Quota,
-                "OpenAI quota or credits may be exhausted.",
-                false),
-            (int)HttpStatusCode.TooManyRequests => new(
-                OpenAiFailureKind.RateLimit,
-                "OpenAI is temporarily rate limiting this request.",
-                true),
-            >= 500 => new(
-                OpenAiFailureKind.Network,
-                "OpenAI is temporarily unavailable.",
-                true),
-            _ => new(
-                OpenAiFailureKind.Unknown,
-                "The OpenAI request failed.",
-                false),
-        };
-    }
-
-    private static bool IsQuotaFailure(ClientResultException exception)
-    {
-        string message = exception.Message ?? string.Empty;
-        return message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase) ||
-               message.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
-               message.Contains("credit", StringComparison.OrdinalIgnoreCase) ||
-               message.Contains("billing", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsJsonObject(string value)
