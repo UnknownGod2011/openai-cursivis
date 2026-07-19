@@ -131,8 +131,8 @@
       "cursivis.application": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Contracts": "[1.0.0, )",
-          "Cursivis.Domain": "[1.0.0, )"
+          "Cursivis.Contracts": "[0.1.0, )",
+          "Cursivis.Domain": "[0.1.0, )"
         }
       },
       "cursivis.contracts": {
@@ -140,6 +140,13 @@
       },
       "cursivis.domain": {
         "type": "Project"
+      }
+    },
+    "net8.0/win-x64": {
+      "System.Text.Encodings.Web": {
+        "type": "Transitive",
+        "resolved": "10.0.3",
+        "contentHash": "l8QNBPp92bVzl9Kw8nNtm1uYRNNhUrdulZjM4a8YK/QGNa8z9utKsC0bDoPB+Vq8LOlbD3fIyGlabtz80jT7cw=="
       }
     }
   }

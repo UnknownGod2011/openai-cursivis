@@ -76,8 +76,8 @@
       "cursivis.application": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Contracts": "[1.0.0, )",
-          "Cursivis.Domain": "[1.0.0, )"
+          "Cursivis.Contracts": "[0.1.0, )",
+          "Cursivis.Domain": "[0.1.0, )"
         }
       },
       "cursivis.contracts": {
@@ -89,8 +89,17 @@
       "cursivis.infrastructure.storage": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Domain": "[1.0.0, )"
+          "Cursivis.Application": "[0.1.0, )",
+          "Cursivis.Domain": "[0.1.0, )"
         }
+      }
+    },
+    "net8.0-windows10.0.19041/win-x64": {
+      "System.Threading.AccessControl": {
+        "type": "Direct",
+        "requested": "[8.0.0, )",
+        "resolved": "8.0.0",
+        "contentHash": "cIed5+HuYz+eV9yu9TH95zPkqmm1J9Qps9wxjB335sU8tsqc2kGdlTEH9FZzZeCS8a7mNSEsN8ZkyhQp1gfdEw=="
       }
     }
   }

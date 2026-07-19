@@ -9,6 +9,33 @@ permissions:
   contents: read
 
 jobs:
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install locked website dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build and test static website
+        run: npm test
+
+      - name: Lint website
+        run: npm run lint
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+
   windows:
     runs-on: windows-latest
     timeout-minutes: 30

@@ -17,4 +17,8 @@ public sealed partial class MainWindow : Window
 
     internal void RefreshRuntimeStatus() =>
         (RootFrame.Content as MainPage)?.RefreshRuntimeStatus();
+
+    internal void ShowForActivation() => Activate();
+
+    internal void HideForBackgroundStartup() => AppWindow.Hide();
 }

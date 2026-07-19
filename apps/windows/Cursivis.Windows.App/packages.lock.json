@@ -317,8 +317,8 @@
       "cursivis.application": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Contracts": "[1.0.0, )",
-          "Cursivis.Domain": "[1.0.0, )"
+          "Cursivis.Contracts": "[0.1.0, )",
+          "Cursivis.Domain": "[0.1.0, )"
         }
       },
       "cursivis.contracts": {
@@ -327,25 +327,33 @@
       "cursivis.domain": {
         "type": "Project"
       },
+      "cursivis.infrastructure.browserbridge": {
+        "type": "Project",
+        "dependencies": {
+          "Cursivis.Application": "[0.1.0, )",
+          "Cursivis.Contracts": "[0.1.0, )"
+        }
+      },
       "cursivis.infrastructure.openai": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Application": "[1.0.0, )",
-          "Cursivis.Contracts": "[1.0.0, )",
+          "Cursivis.Application": "[0.1.0, )",
+          "Cursivis.Contracts": "[0.1.0, )",
           "OpenAI": "[2.12.0, )"
         }
       },
       "cursivis.infrastructure.storage": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Domain": "[1.0.0, )"
+          "Cursivis.Application": "[0.1.0, )",
+          "Cursivis.Domain": "[0.1.0, )"
         }
       },
       "cursivis.windows.platform": {
         "type": "Project",
         "dependencies": {
-          "Cursivis.Application": "[1.0.0, )",
-          "Cursivis.Infrastructure.Storage": "[1.0.0, )",
+          "Cursivis.Application": "[0.1.0, )",
+          "Cursivis.Infrastructure.Storage": "[0.1.0, )",
           "NAudio": "[2.3.0, )",
           "System.Security.Cryptography.ProtectedData": "[8.0.0, )",
           "System.Threading.AccessControl": "[8.0.0, )"
