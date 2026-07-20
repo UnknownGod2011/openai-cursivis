@@ -25,6 +25,8 @@ using Cursivis.Windows.Platform.Overlays;
 using Cursivis.Windows.Platform.Security;
 using Cursivis.Windows.Platform.Selection;
 using Cursivis.Windows.Platform.Startup;
+using Cursivis.Windows.App.Helpers;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using DomainApplicationTheme = Cursivis.Domain.Settings.ApplicationTheme;
 using PlatformHotkeyChord = Cursivis.Windows.Platform.Hotkeys.HotkeyChord;
@@ -60,6 +62,8 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly NavigationGuidanceConfiguration _navigationGuidanceConfiguration;
     private readonly WindowsNavigationGuidanceInteraction _navigationGuidanceInteraction;
     private readonly IQuickTaskFinalizationService _quickTaskFinalizer;
+    private readonly IReadOnlyDictionary<string, HotkeyStartupFallback> _startupHotkeyFallbacks;
+    private readonly Dictionary<string, PlatformHotkeyChord> _configuredHotkeys;
     private readonly object _quickTaskGate = new();
     private readonly object _settingsGate = new();
     private readonly SemaphoreSlim _settingsWriteGate = new(1, 1);
@@ -94,13 +98,15 @@ public sealed class AppRuntime : IAsyncDisposable
         QuickTaskDefinition currentQuickTask,
         ApplicationSettings currentSettings,
         SettingsLoadStatus settingsLoadStatus,
+        IReadOnlyDictionary<string, PlatformHotkeyChord> configuredHotkeys,
         HotkeyUpdateResult contextHotkeyStatus,
         HotkeyUpdateResult quickTaskHotkeyStatus,
         HotkeyUpdateResult directTakeActionHotkeyStatus,
         HotkeyUpdateResult smartDictationHotkeyStatus,
         HotkeyUpdateResult liveModeHotkeyStatus,
         HotkeyUpdateResult cancelHotkeyStatus,
-        HotkeyUpdateResult settingsHotkeyStatus)
+        HotkeyUpdateResult settingsHotkeyStatus,
+        IReadOnlyDictionary<string, HotkeyStartupFallback> startupHotkeyFallbacks)
     {
         CredentialManager = credentialManager;
         ResponsesGateway = responsesGateway;
@@ -126,6 +132,9 @@ public sealed class AppRuntime : IAsyncDisposable
         _currentQuickTask = currentQuickTask;
         _currentSettings = currentSettings;
         ApplicationSettingsLoadStatus = settingsLoadStatus;
+        _configuredHotkeys = new Dictionary<string, PlatformHotkeyChord>(
+            configuredHotkeys,
+            StringComparer.Ordinal);
         ContextHotkeyStatus = contextHotkeyStatus;
         QuickTaskHotkeyStatus = quickTaskHotkeyStatus;
         DirectTakeActionHotkeyStatus = directTakeActionHotkeyStatus;
@@ -133,6 +142,7 @@ public sealed class AppRuntime : IAsyncDisposable
         LiveModeHotkeyStatus = liveModeHotkeyStatus;
         CancelHotkeyStatus = cancelHotkeyStatus;
         SettingsHotkeyStatus = settingsHotkeyStatus;
+        _startupHotkeyFallbacks = startupHotkeyFallbacks;
         _messageHook.HotkeyPressed += OnHotkeyPressed;
         _resultWindow.SettingsRequested += OnSettingsRequested;
         _orbWindow.SettingsRequested += OnSettingsRequested;
@@ -165,6 +175,14 @@ public sealed class AppRuntime : IAsyncDisposable
     public HotkeyUpdateResult CancelHotkeyStatus { get; }
 
     public HotkeyUpdateResult SettingsHotkeyStatus { get; }
+
+    /// <summary>
+    /// Contains the one-time, visible fallback selected only when an untouched
+    /// default shortcut was already registered by another Windows application.
+    /// Custom user shortcuts are never silently changed.
+    /// </summary>
+    public IReadOnlyDictionary<string, HotkeyStartupFallback> StartupHotkeyFallbacks =>
+        _startupHotkeyFallbacks;
 
     public BrowserBridgeSnapshot BrowserBridgeStatus => _browserBridge.Snapshot;
 
@@ -213,6 +231,16 @@ public sealed class AppRuntime : IAsyncDisposable
             ? registration!.Chord.ToString()
             : string.Empty;
 
+    public string GetConfiguredHotkeyChord(string commandName)
+    {
+        lock (_settingsGate)
+        {
+            return _configuredHotkeys.TryGetValue(commandName, out PlatformHotkeyChord chord)
+                ? chord.ToString()
+                : string.Empty;
+        }
+    }
+
     public async Task<HotkeyUpdateResult> UpdateHotkeyAsync(
         string commandName,
         string canonicalChord,
@@ -235,7 +263,21 @@ public sealed class AppRuntime : IAsyncDisposable
             throw new ArgumentException("The shortcut is invalid or reserved.", nameof(canonicalChord));
         }
 
-        return await _hotkeys.UpdateAsync(commandName, chord, cancellationToken);
+        HotkeyUpdateResult result = await _hotkeys.UpdateAsync(commandName, chord, cancellationToken);
+        if (result.Status is not (HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive))
+        {
+            return result;
+        }
+
+        lock (_settingsGate)
+        {
+            // TransactionalHotkeyRegistrar persists this chord to the dedicated
+            // hotkeys.json store before it swaps the native registration. Keep
+            // the UI projection in sync only after that atomic operation wins.
+            _configuredHotkeys[commandName] = chord;
+        }
+
+        return result;
     }
 
     public async Task<ApplicationSettings> UpdateApplicationSettingsAsync(
@@ -440,13 +482,17 @@ public sealed class AppRuntime : IAsyncDisposable
 
     public static async Task<AppRuntime> CreateAsync(nint mainWindowHandle)
     {
+        DispatcherQueue mainWindowDispatcher = DispatcherQueue.GetForCurrentThread()
+            ?? throw new InvalidOperationException("The Cursivis Settings dispatcher is unavailable.");
         CursivisStoragePaths paths = CursivisStoragePaths.ForCurrentUser();
         // WinUI does not install a SynchronizationContext for every async
-        // continuation. Construct compositor-backed windows while this method
-        // is still on the launch DispatcherQueue thread.
+        // continuation. Construct compositor-backed windows before the first
+        // asynchronous storage operation, while this method is still on the
+        // launch DispatcherQueue thread.
         var orbWindow = new ContextOrbWindow();
         var resultWindow = new ContextResultWindow();
         var liveModeWindow = new LiveModeOverlayWindow();
+        _ = await CursivisStoragePaths.TryMigrateLegacyCurrentUserDataAsync(paths);
         var pointerMonitor = new NativePointerMonitor();
         var settingsStore = new VersionedJsonSettingsStore<ApplicationSettings>(
             new VersionedJsonSettingsStoreOptions(
@@ -596,7 +642,9 @@ public sealed class AppRuntime : IAsyncDisposable
 
         var messageHook = new Win32WindowMessageHook(mainWindowHandle);
         var hotkeyPersister = new JsonHotkeyStatePersister(paths.HotkeysFile);
-        var nativeHotkeys = new Win32NativeHotkeyApi();
+        INativeHotkeyApi nativeHotkeys = new WindowThreadNativeHotkeyApi(
+            new DispatcherQueueWindowThreadDispatcher(mainWindowDispatcher),
+            new Win32NativeHotkeyApi());
         var hotkeys = new TransactionalHotkeyRegistrar(
             mainWindowHandle,
             nativeHotkeys,
@@ -607,51 +655,106 @@ public sealed class AppRuntime : IAsyncDisposable
             virtualKey: 0x1B,
             nativeHotkeys);
 
-        Cursivis.Windows.Platform.Hotkeys.HotkeyChord LoadHotkey(
-            string command,
-            Cursivis.Windows.Platform.Hotkeys.HotkeyChord fallback) =>
-            hotkeyPersister.TryLoad(command, out Cursivis.Windows.Platform.Hotkeys.HotkeyChord persisted)
-                ? persisted
-                : fallback;
+        var configuredHotkeys = new Dictionary<string, PlatformHotkeyChord>(StringComparer.Ordinal);
+        var startupHotkeyFallbacks = new Dictionary<string, HotkeyStartupFallback>(StringComparer.Ordinal);
 
-        HotkeyUpdateResult contextStatus = await hotkeys.RegisterInitialAsync(
-            ContextTriggerCommand,
-            LoadHotkey(
-                ContextTriggerCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x4F)));
-        Cursivis.Windows.Platform.Hotkeys.HotkeyChord quickTaskChord = LoadHotkey(
-            QuickTaskCommand,
-            new Cursivis.Windows.Platform.Hotkeys.HotkeyChord(
+        PlatformHotkeyChord LoadHotkey(string commandName, HotkeyCommand command)
+        {
+            if (hotkeyPersister.TryLoad(commandName, out PlatformHotkeyChord persisted))
+            {
+                configuredHotkeys[commandName] = persisted;
+                return persisted;
+            }
+
+            string canonical = HotkeySettings.CreateDefault()[command].Canonical;
+            if (!HotkeyChordParser.TryParse(canonical, out PlatformHotkeyChord chord))
+            {
+                throw new InvalidOperationException($"The default {command} shortcut is invalid.");
+            }
+
+            configuredHotkeys[commandName] = chord;
+            return chord;
+        }
+
+        async Task<HotkeyUpdateResult> RegisterInitialHotkeyAsync(
+            string commandName,
+            HotkeyCommand settingsCommand,
+            uint fallbackVirtualKey)
+        {
+            PlatformHotkeyChord requested = LoadHotkey(commandName, settingsCommand);
+            HotkeyUpdateResult registered = await hotkeys.RegisterInitialAsync(commandName, requested);
+            if (registered.Status != HotkeyUpdateStatus.Conflict)
+            {
+                return registered;
+            }
+
+            // A global chord can be claimed after it was saved (for example by
+            // a legacy Cursivis installation). Keep the command usable with a
+            // stable F-key fallback, persist that replacement, and surface it
+            // explicitly in Settings so the user can choose a different chord.
+            // A system utility can also own the primary fallback, so try an
+            // alternate modifier set before declaring the command inactive.
+            foreach (PlatformHotkeyChord fallback in GetFallbackCandidates(fallbackVirtualKey))
+            {
+                if (fallback == requested)
+                {
+                    continue;
+                }
+
+                HotkeyUpdateResult fallbackResult = await hotkeys.UpdateAsync(commandName, fallback);
+                if (fallbackResult.Status is not (HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive))
+                {
+                    continue;
+                }
+
+                configuredHotkeys[commandName] = fallback;
+                startupHotkeyFallbacks[commandName] = new HotkeyStartupFallback(
+                    requested.ToString(),
+                    fallback.ToString());
+                return fallbackResult;
+            }
+
+            return registered;
+        }
+
+        static IEnumerable<PlatformHotkeyChord> GetFallbackCandidates(uint virtualKey)
+        {
+            yield return new PlatformHotkeyChord(
                 PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt,
-                0x59));
-        HotkeyUpdateResult quickTaskStatus = await hotkeys.RegisterInitialAsync(
+                virtualKey);
+            yield return new PlatformHotkeyChord(
+                PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Shift,
+                virtualKey);
+        }
+
+        HotkeyUpdateResult contextStatus = await RegisterInitialHotkeyAsync(
+            ContextTriggerCommand,
+            HotkeyCommand.ContextTrigger,
+            fallbackVirtualKey: 0x75); // F6
+        HotkeyUpdateResult quickTaskStatus = await RegisterInitialHotkeyAsync(
             QuickTaskCommand,
-            quickTaskChord);
-        HotkeyUpdateResult directTakeActionStatus = await hotkeys.RegisterInitialAsync(
+            HotkeyCommand.CustomQuickTask,
+            fallbackVirtualKey: 0x79); // F10
+        HotkeyUpdateResult directTakeActionStatus = await RegisterInitialHotkeyAsync(
             DirectTakeActionCommand,
-            LoadHotkey(
-                DirectTakeActionCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x49)));
-        HotkeyUpdateResult smartDictationStatus = await hotkeys.RegisterInitialAsync(
+            HotkeyCommand.DirectTakeAction,
+            fallbackVirtualKey: 0x77); // F8
+        HotkeyUpdateResult smartDictationStatus = await RegisterInitialHotkeyAsync(
             SmartDictationCommand,
-            LoadHotkey(
-                SmartDictationCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x55)));
-        HotkeyUpdateResult liveModeStatus = await hotkeys.RegisterInitialAsync(
+            HotkeyCommand.SmartDictation,
+            fallbackVirtualKey: 0x78); // F9
+        HotkeyUpdateResult liveModeStatus = await RegisterInitialHotkeyAsync(
             RealtimeLiveModeCommand,
-            LoadHotkey(
-                RealtimeLiveModeCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x50)));
-        HotkeyUpdateResult cancelStatus = await hotkeys.RegisterInitialAsync(
+            HotkeyCommand.RealtimeLiveMode,
+            fallbackVirtualKey: 0x76); // F7
+        HotkeyUpdateResult cancelStatus = await RegisterInitialHotkeyAsync(
             CancelCommand,
-            LoadHotkey(
-                CancelCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x1B)));
-        HotkeyUpdateResult settingsStatus = await hotkeys.RegisterInitialAsync(
+            HotkeyCommand.CancelEmergencyStop,
+            fallbackVirtualKey: 0x7A); // F11
+        HotkeyUpdateResult settingsStatus = await RegisterInitialHotkeyAsync(
             OpenSettingsCommand,
-            LoadHotkey(
-                OpenSettingsCommand,
-                new PlatformHotkeyChord(PlatformHotkeyModifiers.Control | PlatformHotkeyModifiers.Alt, 0x53)));
+            HotkeyCommand.OpenSettings,
+            fallbackVirtualKey: 0x7B); // F12
 
         return new AppRuntime(
             credentialManager,
@@ -678,13 +781,15 @@ public sealed class AppRuntime : IAsyncDisposable
             quickTaskLoad.Value,
             currentSettings,
             settingsLoad.Status,
+            configuredHotkeys,
             contextStatus,
             quickTaskStatus,
             directTakeActionStatus,
             smartDictationStatus,
             liveModeStatus,
             cancelStatus,
-            settingsStatus);
+            settingsStatus,
+            startupHotkeyFallbacks);
     }
 
     public async ValueTask DisposeAsync()
@@ -730,6 +835,20 @@ public sealed class AppRuntime : IAsyncDisposable
 
     private void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs args)
     {
+        if (HotkeyCaptureCoordinator.IsCapturing)
+        {
+            if (TryGetRegisteredHotkeyChord(args.RegistrationId, out string chord))
+            {
+                _ = HotkeyCaptureCoordinator.TryCaptureRegisteredChord(chord);
+            }
+            else if (_escapeDismissHotkey.Matches(args.RegistrationId))
+            {
+                _ = HotkeyCaptureCoordinator.TryCancelCapture();
+            }
+
+            return;
+        }
+
         if (_escapeDismissHotkey.Matches(args.RegistrationId))
         {
             ContextTrigger.DismissTransientResult();
@@ -786,6 +905,31 @@ public sealed class AppRuntime : IAsyncDisposable
             _ = _smartDictation.CancelAsync();
             _ = _liveMode.StopAsync();
         }
+    }
+
+    private bool TryGetRegisteredHotkeyChord(int registrationId, out string chord)
+    {
+        foreach (string commandName in new[]
+                 {
+                     ContextTriggerCommand,
+                     QuickTaskCommand,
+                     DirectTakeActionCommand,
+                     SmartDictationCommand,
+                     RealtimeLiveModeCommand,
+                     CancelCommand,
+                     OpenSettingsCommand,
+                 })
+        {
+            if (_hotkeys.TryGetActive(commandName, out ActiveHotkeyRegistration? registration) &&
+                registration?.RegistrationId == registrationId)
+            {
+                chord = registration.Chord.ToString();
+                return true;
+            }
+        }
+
+        chord = string.Empty;
+        return false;
     }
 
     private void OnSettingsRequested(object? sender, EventArgs args)
@@ -1036,3 +1180,5 @@ public sealed class AppRuntime : IAsyncDisposable
     }
 
 }
+
+public sealed record HotkeyStartupFallback(string RequestedChord, string ActiveChord);

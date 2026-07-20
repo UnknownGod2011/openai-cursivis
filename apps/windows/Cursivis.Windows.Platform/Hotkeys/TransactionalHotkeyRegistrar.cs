@@ -141,9 +141,76 @@ public sealed class TransactionalHotkeyRegistrar : IAsyncDisposable
 
             if (previous is null)
             {
+                // A command can be inactive after a startup conflict. Settings
+                // must be able to repair that command without requiring an app
+                // restart, while retaining the same register-then-persist
+                // transaction used for an ordinary replacement.
+                var initialRegistrationId = AllocateRegistrationId();
+                var initialRegistration = _nativeApi.Register(
+                    _windowHandle,
+                    initialRegistrationId,
+                    proposedChord);
+                if (!initialRegistration.Succeeded)
+                {
+                    return new HotkeyUpdateResult(
+                        initialRegistration.Failure == NativeHotkeyFailure.Conflict
+                            ? HotkeyUpdateStatus.Conflict
+                            : HotkeyUpdateStatus.NativeRegistrationFailed,
+                        null,
+                        proposedChord,
+                        initialRegistration.NativeErrorCode,
+                        RollbackCompleted: true);
+                }
+
+                try
+                {
+                    await _persister.PersistAsync(
+                        commandName,
+                        proposedChord,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    var cancellationRollback = _nativeApi.Unregister(
+                        _windowHandle,
+                        initialRegistrationId);
+                    if (cancellationRollback.Succeeded)
+                    {
+                        throw;
+                    }
+
+                    return new HotkeyUpdateResult(
+                        HotkeyUpdateStatus.RollbackFailed,
+                        null,
+                        proposedChord,
+                        cancellationRollback.NativeErrorCode,
+                        RollbackCompleted: false);
+                }
+                catch (Exception exception) when (exception is not StackOverflowException)
+                {
+                    var releaseProposed = _nativeApi.Unregister(
+                        _windowHandle,
+                        initialRegistrationId);
+                    return new HotkeyUpdateResult(
+                        releaseProposed.Succeeded
+                            ? HotkeyUpdateStatus.PersistenceFailed
+                            : HotkeyUpdateStatus.RollbackFailed,
+                        null,
+                        proposedChord,
+                        releaseProposed.NativeErrorCode,
+                        RollbackCompleted: releaseProposed.Succeeded);
+                }
+
+                lock (_stateSync)
+                {
+                    _active.Add(
+                        commandName,
+                        new ActiveHotkeyRegistration(commandName, initialRegistrationId, proposedChord));
+                }
+
                 return new HotkeyUpdateResult(
-                    HotkeyUpdateStatus.NotRegistered,
-                    null,
+                    HotkeyUpdateStatus.Success,
+                    proposedChord,
                     proposedChord,
                     0,
                     RollbackCompleted: true);

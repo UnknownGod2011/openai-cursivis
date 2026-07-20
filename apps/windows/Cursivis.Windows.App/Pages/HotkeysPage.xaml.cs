@@ -26,70 +26,59 @@ public sealed partial class HotkeysPage : Page
             return;
         }
 
-        bool contextActive = runtime.ContextHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool cancelActive = runtime.CancelHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool takeActionActive = runtime.DirectTakeActionHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool dictationActive = runtime.SmartDictationHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool liveModeActive = runtime.LiveModeHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool quickTaskActive = runtime.QuickTaskHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        bool settingsActive = runtime.SettingsHotkeyStatus.Status is
-            HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
-        if (contextActive)
+        var registrations = new[]
         {
-            ContextTriggerRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.ContextTriggerCommand);
-            ContextTriggerRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+            new RuntimeRegistration(ContextTriggerRecorder, AppRuntime.ContextTriggerCommand, runtime.ContextHotkeyStatus),
+            new RuntimeRegistration(LiveModeRecorder, AppRuntime.RealtimeLiveModeCommand, runtime.LiveModeHotkeyStatus),
+            new RuntimeRegistration(TakeActionRecorder, AppRuntime.DirectTakeActionCommand, runtime.DirectTakeActionHotkeyStatus),
+            new RuntimeRegistration(DictationRecorder, AppRuntime.SmartDictationCommand, runtime.SmartDictationHotkeyStatus),
+            new RuntimeRegistration(QuickTaskRecorder, AppRuntime.QuickTaskCommand, runtime.QuickTaskHotkeyStatus),
+            new RuntimeRegistration(CancelRecorder, AppRuntime.CancelCommand, runtime.CancelHotkeyStatus),
+            new RuntimeRegistration(SettingsRecorder, AppRuntime.OpenSettingsCommand, runtime.SettingsHotkeyStatus),
+        };
+
+        foreach (RuntimeRegistration registration in registrations)
+        {
+            registration.Recorder.ConfiguredChord = runtime.GetConfiguredHotkeyChord(registration.Command);
+            registration.Recorder.ActiveChord = runtime.GetActiveHotkeyChord(registration.Command);
+            registration.Recorder.StatusText = IsActive(registration.Result)
+                ? ResourceText.Get("HotkeyRegisteredStatus")
+                : DescribeFailure(registration.Result);
         }
 
-        if (cancelActive)
+        if (runtime.StartupHotkeyFallbacks.Count > 0)
         {
-            CancelRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.CancelCommand);
-            CancelRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
+            HotkeysHeader.StatusText = "Shortcut conflict resolved";
+            HotkeysHeader.StatusDetail = "Cursivis Next kept every command available with a visible fallback.";
+            RegistrationInfo.Severity = InfoBarSeverity.Warning;
+            RegistrationInfo.Title = "A default shortcut was already in use";
+            RegistrationInfo.Message = string.Join(
+                " ",
+                runtime.StartupHotkeyFallbacks.Select(static fallback =>
+                    $"{fallback.Key}: {fallback.Value.RequestedChord} was changed to {fallback.Value.ActiveChord}."));
+            return;
         }
 
-        if (takeActionActive)
-        {
-            TakeActionRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.DirectTakeActionCommand);
-            TakeActionRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
-        }
-
-        if (dictationActive)
-        {
-            DictationRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.SmartDictationCommand);
-            DictationRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
-        }
-
-        if (liveModeActive)
-        {
-            LiveModeRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.RealtimeLiveModeCommand);
-            LiveModeRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
-        }
-
-        if (quickTaskActive)
-        {
-            QuickTaskRecorder.ActiveChord = runtime.QuickTaskActiveChord;
-            QuickTaskRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
-        }
-
-        if (settingsActive)
-        {
-            SettingsRecorder.ActiveChord = runtime.GetActiveHotkeyChord(AppRuntime.OpenSettingsCommand);
-            SettingsRecorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
-        }
-
-        if (contextActive && cancelActive && takeActionActive && dictationActive && liveModeActive && quickTaskActive && settingsActive)
+        if (registrations.All(static registration => IsActive(registration.Result)))
         {
             HotkeysHeader.StatusText = ResourceText.Get("HotkeysActiveStatus");
             HotkeysHeader.StatusDetail = ResourceText.Get("HotkeysActiveStatusDetail");
             RegistrationInfo.Severity = InfoBarSeverity.Success;
             RegistrationInfo.Title = ResourceText.Get("HotkeysActiveInfoTitle");
             RegistrationInfo.Message = ResourceText.Get("HotkeysActiveInfoMessage");
+            return;
         }
+
+        HotkeysHeader.StatusText = "Shortcut registration needs attention";
+        HotkeysHeader.StatusDetail = "Commands with an error remain inactive until you choose a different chord.";
+        RegistrationInfo.Severity = InfoBarSeverity.Error;
+        RegistrationInfo.Title = "One or more global shortcuts are unavailable";
+        RegistrationInfo.Message = string.Join(
+            " ",
+            registrations
+                .Where(static registration => !IsActive(registration.Result))
+                .Select(static registration =>
+                    $"{registration.Recorder.FunctionName}: {DescribeFailure(registration.Result)}"));
     }
 
     private IReadOnlyList<HotkeyRecorder> Recorders =>
@@ -110,9 +99,10 @@ public sealed partial class HotkeysPage : Page
             return;
         }
 
-        int duplicateCount = Recorders.Count(
-            item => string.Equals(item.ConfiguredChord, args.Chord, StringComparison.Ordinal));
-        if (duplicateCount > 1)
+        bool duplicatesAnotherCommand = Recorders.Any(
+            item => !ReferenceEquals(item, recorder) &&
+                    string.Equals(item.ConfiguredChord, args.Chord, StringComparison.Ordinal));
+        if (duplicatesAnotherCommand)
         {
             recorder.SetExternalValidation(ResourceText.Get("HotkeyDuplicateValidation"));
             HotkeyPageStatus.Text = ResourceText.Get("HotkeyDuplicatePageStatus");
@@ -132,18 +122,25 @@ public sealed partial class HotkeysPage : Page
             HotkeyUpdateResult result = await runtime.UpdateHotkeyAsync(command, args.Chord);
             if (result.Status is HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive)
             {
+                recorder.ConfiguredChord = runtime.GetConfiguredHotkeyChord(command);
                 recorder.ActiveChord = result.ActiveChord?.ToString() ?? args.Chord;
                 recorder.StatusText = ResourceText.Get("HotkeyRegisteredStatus");
                 HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationSucceededPageStatus");
                 return;
             }
 
+            recorder.ConfiguredChord = runtime.GetConfiguredHotkeyChord(command);
             recorder.ActiveChord = runtime.GetActiveHotkeyChord(command);
-            recorder.StatusText = ResourceText.Get("QuickTaskHotkeyConflict");
-            HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationFailedPageStatus");
+            recorder.StatusText = DescribeFailure(result);
+            HotkeyPageStatus.Text = recorder.StatusText;
         }
         catch (ArgumentException)
         {
+            if (runtime is not null && command is not null)
+            {
+                recorder.ConfiguredChord = runtime.GetConfiguredHotkeyChord(command);
+                recorder.ActiveChord = runtime.GetActiveHotkeyChord(command);
+            }
             recorder.SetExternalValidation(ResourceText.Get("HotkeyReservedConflict"));
             HotkeyPageStatus.Text = ResourceText.Get("HotkeyRegistrationFailedPageStatus");
         }
@@ -165,7 +162,6 @@ public sealed partial class HotkeysPage : Page
         bool allRegistered = runtime is not null;
         foreach ((HotkeyRecorder recorder, string chord) in defaults)
         {
-            recorder.RestoreConfiguredChord(chord);
             string? command = GetCommand(recorder);
             if (runtime is null || command is null)
             {
@@ -176,10 +172,11 @@ public sealed partial class HotkeysPage : Page
             HotkeyUpdateResult result = await runtime.UpdateHotkeyAsync(command, chord);
             bool registered = result.Status is HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
             allRegistered &= registered;
+            recorder.ConfiguredChord = runtime.GetConfiguredHotkeyChord(command);
             recorder.ActiveChord = result.ActiveChord?.ToString() ?? runtime.GetActiveHotkeyChord(command);
             recorder.StatusText = registered
                 ? ResourceText.Get("HotkeyRegisteredStatus")
-                : ResourceText.Get("QuickTaskHotkeyConflict");
+                : DescribeFailure(result);
         }
 
         HotkeyPageStatus.Text = ResourceText.Get(
@@ -224,4 +221,29 @@ public sealed partial class HotkeysPage : Page
             ? AppRuntime.OpenSettingsCommand
             : null;
     }
+
+    private static bool IsActive(HotkeyUpdateResult result) => result.Status is
+        HotkeyUpdateStatus.Success or HotkeyUpdateStatus.AlreadyActive;
+
+    private static string DescribeFailure(HotkeyUpdateResult result) => result.Status switch
+    {
+        HotkeyUpdateStatus.Conflict =>
+            $"{result.ProposedChord} is already registered by another application. Choose a different shortcut.",
+        HotkeyUpdateStatus.PersistenceFailed =>
+            "Windows activated the shortcut, but Cursivis Next could not save it safely. The previous shortcut was restored.",
+        HotkeyUpdateStatus.RollbackFailed =>
+            $"Windows could not safely replace this shortcut (error {result.NativeErrorCode}). Restart Cursivis Next and choose another chord.",
+        HotkeyUpdateStatus.NativeRegistrationFailed =>
+            $"Windows rejected {result.ProposedChord} (error {result.NativeErrorCode}). Choose a different shortcut.",
+        HotkeyUpdateStatus.NativeReleaseFailed =>
+            $"Windows could not release the previous shortcut (error {result.NativeErrorCode}). Restart Cursivis Next before trying again.",
+        HotkeyUpdateStatus.NotRegistered =>
+            "The shortcut runtime is unavailable. Restart Cursivis Next.",
+        _ => "The shortcut could not be activated. The previous shortcut remains active.",
+    };
+
+    private sealed record RuntimeRegistration(
+        HotkeyRecorder Recorder,
+        string Command,
+        HotkeyUpdateResult Result);
 }

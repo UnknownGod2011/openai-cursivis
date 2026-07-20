@@ -189,6 +189,47 @@ public sealed class SettingsPersistenceTests
         Assert.Throws<ArgumentException>(() => CursivisStoragePaths.ForRoot("relative-root"));
     }
 
+    [Fact]
+    public async Task LegacyStorageMigration_CopiesOnlyKnownFilesOnceAndLeavesSourceUntouched()
+    {
+        using var temporary = new TemporaryDirectory();
+        string legacyRoot = System.IO.Path.Combine(temporary.Path, "legacy-cursivis");
+        string destinationRoot = System.IO.Path.Combine(temporary.Path, "cursivis-next");
+        Directory.CreateDirectory(legacyRoot);
+
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(legacyRoot, "settings.json"),
+            "{\"schemaVersion\":1}");
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(legacyRoot, "quick-task.json"),
+            "{\"schemaVersion\":1}");
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(legacyRoot, "runtime-profile.json"),
+            "{\"provider\":\"legacy\"}");
+
+        CursivisLegacyStorageMigrationResult migrated = await CursivisStoragePaths
+            .TryMigrateLegacyDataAsync(legacyRoot, CursivisStoragePaths.ForRoot(destinationRoot));
+
+        Assert.True(migrated.LegacyRootFound);
+        Assert.Equal(["quick-task.json", "settings.json"], migrated.MigratedRelativePaths.OrderBy(static value => value));
+        Assert.Equal(
+            "{\"schemaVersion\":1}",
+            await File.ReadAllTextAsync(System.IO.Path.Combine(destinationRoot, "settings.json")));
+        Assert.Equal(
+            "{\"schemaVersion\":1}",
+            await File.ReadAllTextAsync(System.IO.Path.Combine(legacyRoot, "settings.json")));
+        Assert.False(File.Exists(System.IO.Path.Combine(destinationRoot, "runtime-profile.json")));
+
+        await File.WriteAllTextAsync(
+            System.IO.Path.Combine(legacyRoot, "memory.json"),
+            "{\"schemaVersion\":1}");
+        CursivisLegacyStorageMigrationResult repeated = await CursivisStoragePaths
+            .TryMigrateLegacyDataAsync(legacyRoot, CursivisStoragePaths.ForRoot(destinationRoot));
+
+        Assert.False(repeated.LegacyRootFound);
+        Assert.False(File.Exists(System.IO.Path.Combine(destinationRoot, "memory.json")));
+    }
+
     private static VersionedJsonSettingsStore<TestSettings> CreateStore(
         string path,
         int currentVersion,

@@ -1,4 +1,4 @@
-const NATIVE_HOST = "app.cursivis.bridge";
+const NATIVE_HOST = "app.cursivis.next.bridge";
 const PROTOCOL_VERSION = 1;
 const MAX_SELECTION = 50_000;
 const MAX_CONTEXT = 8_000;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 using Cursivis.Windows.App.Helpers;
@@ -45,7 +46,10 @@ public sealed partial class HotkeyRecorder : UserControl
 
     private static readonly string[] ModifierOrder = ["Ctrl", "Alt", "Shift"];
     private readonly HashSet<string> _pressedModifiers = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _globalPressedModifiers = new(StringComparer.Ordinal);
     private bool _isCapturing;
+    private GlobalKeyboardCaptureHook? _globalCaptureHook;
+    private string? _pendingGlobalCandidate;
 
     public HotkeyRecorder()
     {
@@ -106,8 +110,34 @@ public sealed partial class HotkeyRecorder : UserControl
 
     private void OnCaptureClicked(object sender, RoutedEventArgs args)
     {
-        _isCapturing = true;
+        if (!_isCapturing)
+        {
+            if (!HotkeyCaptureCoordinator.TryBeginCapture(this))
+            {
+                ValidationText.Text = "Finish recording the current shortcut first.";
+                return;
+            }
+
+            _isCapturing = true;
+            try
+            {
+                _globalCaptureHook = new GlobalKeyboardCaptureHook(OnGlobalKeyTransition);
+                _globalCaptureHook.Start();
+            }
+            catch (Win32Exception exception)
+            {
+                _globalCaptureHook?.Dispose();
+                _globalCaptureHook = null;
+                _isCapturing = false;
+                HotkeyCaptureCoordinator.EndCapture(this);
+                StatusText = exception.Message;
+                return;
+            }
+        }
+
         _pressedModifiers.Clear();
+        _globalPressedModifiers.Clear();
+        _pendingGlobalCandidate = null;
         CaptureButton.Content = ResourceText.Get("HotkeyPressShortcut");
         ValidationText.Text = ResourceText.Get("HotkeyEscapeToCancel");
         CaptureButton.Focus(FocusState.Keyboard);
@@ -128,7 +158,88 @@ public sealed partial class HotkeyRecorder : UserControl
             return;
         }
 
+        CaptureKeyDown(args.Key);
+    }
+
+    internal void CaptureRegisteredChord(string candidate)
+    {
+        if (!_isCapturing)
+        {
+            return;
+        }
+
+        CaptureCandidate(candidate);
+    }
+
+    internal void CancelActiveCapture() => CancelCapture();
+
+    private void OnCaptureKeyUp(object sender, KeyRoutedEventArgs args)
+    {
         string? modifier = GetModifier(args.Key);
+        if (modifier is not null)
+        {
+            _pressedModifiers.Remove(modifier);
+        }
+    }
+
+    private void OnGlobalKeyTransition(uint virtualKey, bool isDown)
+    {
+        if (!_isCapturing || virtualKey > byte.MaxValue)
+        {
+            return;
+        }
+
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            HandleGlobalKeyTransition((VirtualKey)virtualKey, isDown);
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(() => HandleGlobalKeyTransition((VirtualKey)virtualKey, isDown));
+    }
+
+    private void HandleGlobalKeyTransition(VirtualKey key, bool isDown)
+    {
+        if (!_isCapturing)
+        {
+            return;
+        }
+
+        string? modifier = GetModifier(key);
+        if (modifier is not null)
+        {
+            if (isDown)
+            {
+                _globalPressedModifiers.Add(modifier);
+            }
+            else
+            {
+                _globalPressedModifiers.Remove(modifier);
+            }
+
+            return;
+        }
+
+        if (isDown)
+        {
+            if (_globalPressedModifiers.Count >= 2)
+            {
+                _pendingGlobalCandidate = FormatChord(_globalPressedModifiers, GetKeyName(key));
+            }
+
+            return;
+        }
+
+        if (_pendingGlobalCandidate is { } pending)
+        {
+            _pendingGlobalCandidate = null;
+            CaptureCandidate(pending);
+        }
+    }
+
+    private void CaptureKeyDown(VirtualKey key)
+    {
+        string? modifier = GetModifier(key);
         if (modifier is not null)
         {
             _pressedModifiers.Add(modifier);
@@ -142,27 +253,27 @@ public sealed partial class HotkeyRecorder : UserControl
             return;
         }
 
-        string keyName = GetKeyName(args.Key);
-        string candidate = FormatChord(_pressedModifiers, keyName);
+        CaptureCandidate(FormatChord(_pressedModifiers, GetKeyName(key)));
+    }
+
+    private void CaptureCandidate(string candidate)
+    {
+        if (!_isCapturing)
+        {
+            return;
+        }
+
         if (IsReserved(candidate))
         {
             ValidationText.Text = ResourceText.Get("HotkeyReservedConflict");
             return;
         }
 
-        ConfiguredChord = candidate;
-        StatusText = ResourceText.Get("HotkeyCandidateNotRegistered");
+        // Keep the displayed configuration authoritative until the runtime has
+        // registered and durably persisted the candidate. This prevents a
+        // rejected duplicate from looking as though it was saved.
         CandidateCaptured?.Invoke(this, new HotkeyCandidateEventArgs(candidate));
-        CancelCapture(keepStatus: true);
-    }
-
-    private void OnCaptureKeyUp(object sender, KeyRoutedEventArgs args)
-    {
-        string? modifier = GetModifier(args.Key);
-        if (modifier is not null)
-        {
-            _pressedModifiers.Remove(modifier);
-        }
+        CancelCapture();
     }
 
     private static string? GetModifier(VirtualKey key)
@@ -200,14 +311,26 @@ public sealed partial class HotkeyRecorder : UserControl
 
     private void CancelCapture(bool keepStatus = false)
     {
+        bool wasCapturing = _isCapturing;
         _isCapturing = false;
+        _pendingGlobalCandidate = null;
+        _globalCaptureHook?.Dispose();
+        _globalCaptureHook = null;
+        if (wasCapturing)
+        {
+            HotkeyCaptureCoordinator.EndCapture(this);
+        }
+
         _pressedModifiers.Clear();
+        _globalPressedModifiers.Clear();
         CaptureButton.Content = ResourceText.Get("HotkeyRecordShortcut");
         if (!keepStatus)
         {
             ValidationText.Text = StatusText;
         }
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args) => CancelCapture(keepStatus: true);
 
     private void UpdateDisplay()
     {

@@ -66,6 +66,86 @@ public sealed class TransactionalHotkeyRegistrarTests
     }
 
     [Fact]
+    public async Task Update_WhenStartupRegistrationWasUnavailable_RegistersAndPersistsTheReplacement()
+    {
+        var events = new List<string>();
+        var native = new FakeNativeHotkeyApi(events);
+        var persister = new FakeHotkeyStatePersister(events);
+        await using var registrar = new TransactionalHotkeyRegistrar(
+            (nint)1,
+            native,
+            persister);
+
+        var result = await registrar.UpdateAsync("open-settings", ProposedChord);
+
+        Assert.Equal(HotkeyUpdateStatus.Success, result.Status);
+        Assert.Equal(ProposedChord, result.ActiveChord);
+        Assert.True(registrar.TryGetActive("open-settings", out ActiveHotkeyRegistration? active));
+        Assert.Equal(ProposedChord, active!.Chord);
+        Assert.Equal(ProposedChord, persister.Persisted["open-settings"]);
+        Assert.Equal(["register:16384", "persist:open-settings"], events);
+    }
+
+    [Fact]
+    public async Task RegisterInitial_ContextTriggerDefault_RegistersWithoutPersistingAnOverride()
+    {
+        var events = new List<string>();
+        var native = new FakeNativeHotkeyApi(events);
+        var persister = new FakeHotkeyStatePersister(events);
+        await using var registrar = new TransactionalHotkeyRegistrar(
+            (nint)1,
+            native,
+            persister);
+
+        var result = await registrar.RegisterInitialAsync("context-trigger", OriginalChord);
+
+        Assert.Equal(HotkeyUpdateStatus.Success, result.Status);
+        Assert.Equal(OriginalChord, result.ActiveChord);
+        Assert.True(registrar.TryGetActive("context-trigger", out ActiveHotkeyRegistration? active));
+        Assert.Equal(OriginalChord, active!.Chord);
+        Assert.Empty(persister.Persisted);
+    }
+
+    [Fact]
+    public async Task Update_WhenInactiveCandidateConflicts_DoesNotPersistOrCreateAnActiveRegistration()
+    {
+        var events = new List<string>();
+        var native = new FakeNativeHotkeyApi(events) { ConflictChord = ProposedChord };
+        var persister = new FakeHotkeyStatePersister(events);
+        await using var registrar = new TransactionalHotkeyRegistrar(
+            (nint)1,
+            native,
+            persister);
+
+        var result = await registrar.UpdateAsync("open-settings", ProposedChord);
+
+        Assert.Equal(HotkeyUpdateStatus.Conflict, result.Status);
+        Assert.False(registrar.TryGetActive("open-settings", out _));
+        Assert.Empty(persister.Persisted);
+        Assert.Equal(["register-conflict:16384"], events);
+    }
+
+    [Fact]
+    public async Task Update_WhenInactiveCandidateCannotPersist_ReleasesItWithoutCreatingAnActiveRegistration()
+    {
+        var events = new List<string>();
+        var native = new FakeNativeHotkeyApi(events);
+        var persister = new FakeHotkeyStatePersister(events) { FailNext = true };
+        await using var registrar = new TransactionalHotkeyRegistrar(
+            (nint)1,
+            native,
+            persister);
+
+        var result = await registrar.UpdateAsync("open-settings", ProposedChord);
+
+        Assert.Equal(HotkeyUpdateStatus.PersistenceFailed, result.Status);
+        Assert.True(result.RollbackCompleted);
+        Assert.False(registrar.TryGetActive("open-settings", out _));
+        Assert.Empty(native.Registrations);
+        Assert.Equal(["register:16384", "persist:open-settings", "unregister:16384"], events);
+    }
+
+    [Fact]
     public async Task Update_WhenNewChordConflicts_DoesNotPersistOrReleaseOriginal()
     {
         var events = new List<string>();

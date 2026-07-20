@@ -5,7 +5,7 @@ The MV3 extension uses Chromium Native Messaging and requests host permission on
 The per-user installer must:
 
 1. Package this directory with a stable signed extension identity.
-2. Write the `app.cursivis.bridge` native-host manifest with the installed native-host executable path.
+2. Write the `app.cursivis.next.bridge` native-host manifest with the installed native-host executable path.
 3. Restrict `allowed_origins` to that exact extension ID.
 4. Register the manifest for supported Chromium browsers under the current user only.
 
