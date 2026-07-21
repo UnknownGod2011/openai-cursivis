@@ -6,7 +6,7 @@ test("renders the production Cursivis landing page and release contract", async 
   const html = await readFile(new URL("../out/index.html", import.meta.url), "utf8");
   assert.match(html, /OpenAI, right where/);
   assert.match(html, /Download for Windows/);
-  assert.match(html, /Cursivis-Setup-x64\.exe/);
+  assert.match(html, /Cursivis-Setup-0\.1\.0-beta\.4-x64\.exe/);
   assert.match(html, /macOS/);
   assert.match(html, /Coming Soon/);
   assert.match(html, /Context Trigger/);
