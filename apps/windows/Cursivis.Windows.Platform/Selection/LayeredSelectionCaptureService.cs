@@ -62,6 +62,18 @@ public sealed class LayeredSelectionCaptureService : ISelectionCaptureService
                 continue;
             }
 
+            string text = read.Text.Trim();
+            if (ShouldVerifyBrowserSelectionWithClipboard(initial, read, text))
+            {
+                // A focused Chromium omnibox can expose a URL as a UIA
+                // selection even while the visible document selection is a
+                // word or phrase. Do not treat that browser-chrome value as
+                // context; continue to the protected Ctrl+C fallback, which
+                // is bound to the original foreground window and restores the
+                // user's clipboard after the read.
+                continue;
+            }
+
             ForegroundWindowIdentity? current = _foreground.GetCurrent();
             if (!IsSameTarget(initial, current))
             {
@@ -71,7 +83,6 @@ public sealed class LayeredSelectionCaptureService : ISelectionCaptureService
                     "The foreground application changed while Cursivis captured the selection.");
             }
 
-            string text = read.Text.Trim();
             if (text.Length > ContextTriggerService.MaximumSelectionCharacters)
             {
                 return SelectionCaptureResult.Failed(
@@ -108,4 +119,33 @@ public sealed class LayeredSelectionCaptureService : ISelectionCaptureService
         actual is not null &&
         expected.ProcessId == actual.ProcessId &&
         expected.WindowHandle == actual.WindowHandle;
+
+    private static bool ShouldVerifyBrowserSelectionWithClipboard(
+        ForegroundWindowIdentity foreground,
+        TextSelectionReadResult read,
+        string text)
+    {
+        if (read.Source != ContextSource.UserInterfaceAutomation ||
+            !IsChromiumFamilyProcess(foreground.ProcessName) ||
+            !Uri.TryCreate(text, UriKind.Absolute, out Uri? uri))
+        {
+            return false;
+        }
+
+        // Uri.UriSchemeHttp/Https are not compile-time constants, so use
+        // ordinal comparisons rather than constant-pattern matching.
+        return IsHttpOrHttpsScheme(uri.Scheme);
+    }
+
+    private static bool IsHttpOrHttpsScheme(string scheme) =>
+        scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ||
+        scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsChromiumFamilyProcess(string? processName) =>
+        processName is not null &&
+        (processName.Equals("chrome", StringComparison.OrdinalIgnoreCase) ||
+         processName.Equals("msedge", StringComparison.OrdinalIgnoreCase) ||
+         processName.Equals("brave", StringComparison.OrdinalIgnoreCase) ||
+         processName.Equals("vivaldi", StringComparison.OrdinalIgnoreCase) ||
+         processName.Equals("electron", StringComparison.OrdinalIgnoreCase));
 }

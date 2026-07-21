@@ -58,11 +58,12 @@ public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
         try
         {
             AutomationElement focused = AutomationElement.FocusedElement;
+            // Only trust the focused UIA element. Chromium can expose a
+            // selected omnibox URL beside the actual page selection; walking
+            // every foreground descendant makes that arbitrary browser chrome
+            // look like user context. The protected clipboard reader handles
+            // providers that do not expose the focused selection safely.
             string? selectedText = TryReadSelection(focused);
-            if (string.IsNullOrWhiteSpace(selectedText))
-            {
-                selectedText = TryReadForegroundDescendantSelection();
-            }
 
             return string.IsNullOrWhiteSpace(selectedText)
                 ? NoSelection("The foreground application has no selected text range.")
@@ -79,38 +80,6 @@ public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
                 ContextSource.UserInterfaceAutomation,
                 "UI Automation could not read the focused control.");
         }
-    }
-
-    private static string? TryReadForegroundDescendantSelection()
-    {
-        nint windowHandle = GetForegroundWindow();
-        if (windowHandle == nint.Zero)
-        {
-            return null;
-        }
-
-        AutomationElement foreground = AutomationElement.FromHandle(windowHandle);
-        var supportsText = new PropertyCondition(
-            AutomationElement.IsTextPatternAvailableProperty,
-            true);
-        AutomationElementCollection candidates = foreground.FindAll(
-            TreeScope.Descendants,
-            supportsText);
-        foreach (AutomationElement candidate in candidates)
-        {
-            if (candidate.Current.IsOffscreen)
-            {
-                continue;
-            }
-
-            string? selection = TryReadSelection(candidate);
-            if (!string.IsNullOrWhiteSpace(selection))
-            {
-                return selection;
-            }
-        }
-
-        return null;
     }
 
     private static string? TryReadSelection(AutomationElement element)
@@ -143,7 +112,4 @@ public sealed class UiAutomationTextSelectionReader : ITextSelectionReader
             TextSelectionReadStatus.NoSelection,
             ContextSource.UserInterfaceAutomation,
             detail);
-
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
 }

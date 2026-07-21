@@ -1093,6 +1093,8 @@ public sealed class AppRuntime : IAsyncDisposable
             return;
         }
 
+        // Live Mode must keep the compact orb (with faint Live-only glow), the
+        // circular cancel control, and the transcript panel visible together.
         OrbPresentationState orbState = snapshot.State switch
         {
             LiveModeState.Connecting => OrbPresentationState.Thinking,

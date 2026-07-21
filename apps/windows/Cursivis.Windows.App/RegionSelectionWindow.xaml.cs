@@ -17,7 +17,7 @@ namespace Cursivis.Windows.App;
 internal enum RegionSelectionKind
 {
     Region,
-    Color,
+    TooSmall,
     Cancelled,
 }
 
@@ -147,7 +147,7 @@ public sealed partial class RegionSelectionWindow : Window
         ScreenAnchor anchor = new(anchorX, anchorY);
 
         RegionSelection selection = width < ClickThresholdPixels || height < ClickThresholdPixels
-            ? new RegionSelection(RegionSelectionKind.Color, null, anchor)
+            ? new RegionSelection(RegionSelectionKind.TooSmall, null, anchor)
             : new RegionSelection(
                 RegionSelectionKind.Region,
                 new OverlayRectangle(left, top, width, height),

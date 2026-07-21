@@ -17,10 +17,9 @@
             x:Name="RootShell"
             Padding="12"
             Background="{ThemeResource OverlayShellBrush}"
+            BorderBrush="{ThemeResource OverlayBorderBrush}"
+            BorderThickness="1"
             CornerRadius="28">
-            <Border.Shadow>
-                <ThemeShadow />
-            </Border.Shadow>
 
             <Grid>
                 <Grid.RowDefinitions>

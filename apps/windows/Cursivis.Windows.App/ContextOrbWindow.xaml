@@ -60,25 +60,26 @@
                 Canvas.Top="72">
                 <Border
                     x:Name="StateRing"
-                    Width="166"
-                    Height="166"
+                    Width="136"
+                    Height="136"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     BorderBrush="{ThemeResource OverlayHairlineBrush}"
                     BorderThickness="1"
-                    CornerRadius="83"
-                    Opacity="0.72">
+                    CornerRadius="68"
+                    Opacity="0.16"
+                    Visibility="Collapsed">
                     <Grid>
-                        <Border x:Name="IdleStateVisual" Background="{ThemeResource OrbIdleBrush}" CornerRadius="82" Opacity="0.14" />
-                        <Border x:Name="ListeningStateVisual" Background="{ThemeResource OrbListeningBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="ThinkingStateVisual" Background="{ThemeResource OrbThinkingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="GeneratingStateVisual" Background="{ThemeResource OrbGeneratingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="SpeakingStateVisual" Background="{ThemeResource OrbSpeakingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="GuidingStateVisual" Background="{ThemeResource OrbGuidingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="ExecutingStateVisual" Background="{ThemeResource OrbExecutingBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="DoneStateVisual" Background="{ThemeResource OrbDoneBrush}" CornerRadius="82" Opacity="0.22" Visibility="Collapsed" />
-                        <Border x:Name="CancelledStateVisual" Background="{ThemeResource OrbCancelledBrush}" CornerRadius="82" Opacity="0.18" Visibility="Collapsed" />
-                        <Border x:Name="ErrorStateVisual" Background="{ThemeResource OrbErrorBrush}" CornerRadius="82" Opacity="0.24" Visibility="Collapsed" />
+                        <Border x:Name="IdleStateVisual" Background="{ThemeResource OrbIdleBrush}" CornerRadius="67" Opacity="0.06" />
+                        <Border x:Name="ListeningStateVisual" Background="{ThemeResource OrbListeningBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="ThinkingStateVisual" Background="{ThemeResource OrbThinkingBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="GeneratingStateVisual" Background="{ThemeResource OrbGeneratingBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="SpeakingStateVisual" Background="{ThemeResource OrbSpeakingBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="GuidingStateVisual" Background="{ThemeResource OrbGuidingBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="ExecutingStateVisual" Background="{ThemeResource OrbExecutingBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="DoneStateVisual" Background="{ThemeResource OrbDoneBrush}" CornerRadius="67" Opacity="0.10" Visibility="Collapsed" />
+                        <Border x:Name="CancelledStateVisual" Background="{ThemeResource OrbCancelledBrush}" CornerRadius="67" Opacity="0.08" Visibility="Collapsed" />
+                        <Border x:Name="ErrorStateVisual" Background="{ThemeResource OrbErrorBrush}" CornerRadius="67" Opacity="0.11" Visibility="Collapsed" />
                     </Grid>
                 </Border>
 

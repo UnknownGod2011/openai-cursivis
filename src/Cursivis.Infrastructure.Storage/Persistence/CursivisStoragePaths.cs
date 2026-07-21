@@ -33,6 +33,8 @@ public sealed class CursivisStoragePaths
 
     public string OverlayPlacementFile => Path.Combine(RootDirectory, "overlay-placement.json");
 
+    public string LiveModePlacementFile => Path.Combine(RootDirectory, "live-mode-placement.json");
+
     public string ResultPanelSizeFile => Path.Combine(RootDirectory, "result-panel-size.json");
 
     public string ResultPanelPlacementFile => Path.Combine(RootDirectory, "result-panel-placement.json");
@@ -120,6 +122,7 @@ public sealed class CursivisStoragePaths
         ("hotkeys.json", 64 * 1024),
         ("memory.json", 512 * 1024),
         ("overlay-placement.json", 32 * 1024),
+        ("live-mode-placement.json", 32 * 1024),
         ("result-panel-size.json", 32 * 1024),
         ("result-panel-placement.json", 32 * 1024),
         (Path.Combine("secrets", ApiKeySecretFileName), 1024 * 1024),

@@ -535,11 +535,12 @@ public sealed partial class ContextResultWindow : Window
     private RectInt32 GetBoundsInOverlay(FrameworkElement element)
     {
         var origin = element.TransformToVisual(OverlayRoot).TransformPoint(new global::Windows.Foundation.Point(0, 0));
+        double scale = OverlayRoot.XamlRoot?.RasterizationScale ?? 1d;
         return new RectInt32(
-            Math.Max(0, (int)Math.Floor(origin.X)),
-            Math.Max(0, (int)Math.Floor(origin.Y)),
-            Math.Max(1, (int)Math.Ceiling(element.ActualWidth)),
-            Math.Max(1, (int)Math.Ceiling(element.ActualHeight)));
+            Math.Max(0, (int)Math.Floor(origin.X * scale)),
+            Math.Max(0, (int)Math.Floor(origin.Y * scale)),
+            Math.Max(1, (int)Math.Ceiling(element.ActualWidth * scale)),
+            Math.Max(1, (int)Math.Ceiling(element.ActualHeight * scale)));
     }
 
     private void OnNativeMoveSizeEntered(

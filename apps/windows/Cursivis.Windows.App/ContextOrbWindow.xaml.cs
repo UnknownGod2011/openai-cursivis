@@ -38,6 +38,7 @@ public sealed partial class ContextOrbWindow : Window
     {
         InitializeComponent();
         Title = ResourceText.Get("ContextOrbWindowTitle");
+        AppWindow.SetIcon("Assets/AppIcon.ico");
         _transparentBackdrop = new TransparentWindowBackdrop(this);
 
         var presenter = (OverlappedPresenter)AppWindow.Presenter;
@@ -47,7 +48,9 @@ public sealed partial class ContextOrbWindow : Window
         presenter.IsResizable = false;
         presenter.SetBorderAndTitleBar(false, false);
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(StatusText);
+        // The complete core orb is the move surface. StatusText was too small
+        // to provide a reliable drag target and made placement feel broken.
+        SetTitleBar(DragSurface);
         _nonClientPointerSource = InputNonClientPointerSource.GetForWindowId(AppWindow.Id);
         _nonClientPointerSource.ExitedMoveSize += OnNativeMoveSizeExited;
 
@@ -95,7 +98,9 @@ public sealed partial class ContextOrbWindow : Window
         SetGuidedPanelVisible(false);
         DetailText.Visibility = Visibility.Visible;
         ApplyState(state, status, detail, animateLiveState: true);
-        StateRing.Opacity = Math.Clamp(0.64 + (Math.Clamp(audioLevel, 0, 1) * 0.18), 0, 0.82);
+        // Live Mode alone gets a compact, restrained halo. Ordinary workflow
+        // states never expose a ring, pulse, or large transparent host region.
+        StateRing.Opacity = Math.Clamp(0.11 + (Math.Clamp(audioLevel, 0, 1) * 0.08), 0.11, 0.19);
         if (!_overlay.IsVisible)
         {
             ShowWithoutActivation();
@@ -114,7 +119,7 @@ public sealed partial class ContextOrbWindow : Window
         ApplyState(state, status, detail);
         // Smart Dictation is a bounded one-shot workflow. Keep the original
         // static orb treatment; animated audio glow is exclusive to Live Mode.
-        StateRing.Opacity = 0.72;
+        StateRing.Opacity = 0.16;
         if (!_overlay.IsVisible)
         {
             ShowWithoutActivation();
@@ -156,7 +161,8 @@ public sealed partial class ContextOrbWindow : Window
     {
         SetGuidedPanelVisible(false);
         DetailText.Visibility = Visibility.Collapsed;
-        StateRing.Opacity = 0.72;
+        StateRing.Visibility = Visibility.Collapsed;
+        StateRing.Opacity = 0.16;
         _overlay.Hide();
     }
 
@@ -175,7 +181,7 @@ public sealed partial class ContextOrbWindow : Window
         bool idleControlsVisible = state is OrbPresentationState.Idle or OrbPresentationState.Done;
         IdleControlBar.Visibility = idleControlsVisible ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.Visibility = idleControlsVisible ? Visibility.Collapsed : Visibility.Visible;
-        SetStateVisual(state);
+        SetStateVisual(state, animateLiveState);
         ApplyVisibleWindowRegion();
         AutomationProperties.SetName(OverlayRoot, $"Cursivis {status}. {detail}");
         UpdateMotion(state, animateLiveState);
@@ -277,7 +283,7 @@ public sealed partial class ContextOrbWindow : Window
         pulse.InsertKeyFrame(1, Vector3.One);
         pulse.Duration = TimeSpan.FromMilliseconds(state == OrbPresentationState.Listening ? 760 : 1100);
         pulse.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.CenterPoint = new Vector3(83, 83, 0);
+        visual.CenterPoint = new Vector3(68, 68, 0);
         visual.StartAnimation(nameof(Visual.Scale), pulse);
     }
 
@@ -376,7 +382,7 @@ public sealed partial class ContextOrbWindow : Window
         }
     }
 
-    private void SetStateVisual(OrbPresentationState state)
+    private void SetStateVisual(OrbPresentationState state, bool isLivePresentation)
     {
         Border[] visuals =
         [
@@ -394,8 +400,12 @@ public sealed partial class ContextOrbWindow : Window
 
         for (int index = 0; index < visuals.Length; index++)
         {
-            visuals[index].Visibility = index == (int)state ? Visibility.Visible : Visibility.Collapsed;
+            visuals[index].Visibility = isLivePresentation && index == (int)state
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
+
+        StateRing.Visibility = isLivePresentation ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static string GetGlyph(OrbPresentationState state) => state switch
@@ -461,10 +471,16 @@ public sealed partial class ContextOrbWindow : Window
     {
         var shapes = new List<OverlayRegionShape>
         {
-            // Match the largest Live-only pulse, leaving no unused transparent
-            // swap-chain area that can present as a dark halo on some drivers.
-            new(75, 75, 170, 170, isEllipse: true),
+            // The normal HWND is exactly the visible 118px core orb. This
+            // avoids exposing the transparent 320px composition host.
+            new(101, 101, 118, 118, isEllipse: true),
         };
+
+        if (StateRing.Visibility == Visibility.Visible)
+        {
+            // Live Mode may include one close, faint halo around the core.
+            shapes.Add(new OverlayRegionShape(92, 92, 136, 136, isEllipse: true));
+        }
 
         if (IdleControlBar.Visibility == Visibility.Visible)
         {

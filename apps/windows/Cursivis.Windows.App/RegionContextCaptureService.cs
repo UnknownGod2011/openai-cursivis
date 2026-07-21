@@ -60,16 +60,9 @@ internal sealed class RegionContextCaptureService : IRegionContextCaptureService
             }
 
             DateTimeOffset capturedAt = DateTimeOffset.UtcNow;
-            if (selection.Kind == RegionSelectionKind.Color)
+            if (selection.Kind == RegionSelectionKind.TooSmall)
             {
-                CapturedScreenPixel pixel = _screenCapture.CapturePixel(selection.Anchor);
-                ContextExecutionInput input = CreateInput(pixel.Image, target, capturedAt, contextLifetime);
-                return new RegionContextCaptureResult(
-                    RegionContextCaptureStatus.ColorDetected,
-                    input,
-                    pixel.Color,
-                    selection.Anchor,
-                    string.Empty);
+                return Failed("Drag over a larger image or text region to analyze it.");
             }
 
             if (selection.Region is not { } region)

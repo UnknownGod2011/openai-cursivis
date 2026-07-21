@@ -9,10 +9,12 @@ namespace Cursivis.Windows.Platform.Overlays;
 public sealed class NativeOverlayWindow : IDisposable
 {
     private const uint WmNcCalcSize = 0x0083;
+    private const uint WmNcLButtonDown = 0x00A1;
     private const uint WmNcPaint = 0x0085;
     private const uint WmNcActivate = 0x0086;
     private const uint WmGetMinMaxInfo = 0x0024;
     private const uint WmNcDestroy = 0x0082;
+    private const nuint HtCaption = 2;
     private const nuint SubclassId = 0x43564F4C; // "CVOL"
     private const int ExtendedStyleIndex = -20;
     private const int WindowStyleIndex = -16;
@@ -442,7 +444,11 @@ public sealed class NativeOverlayWindow : IDisposable
 
     private void ApplyRoundedRegion(int width, int height, int cornerRadius)
     {
-        int radius = Math.Clamp(cornerRadius, 1, Math.Min(width, height) / 2);
+        double scale = Math.Max(96, GetDpiForWindow(_windowHandle)) / 96d;
+        int radius = Math.Clamp(
+            (int)Math.Round(cornerRadius * scale),
+            1,
+            Math.Min(width, height) / 2);
         nint region = CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
         if (region == nint.Zero)
         {
@@ -464,6 +470,15 @@ public sealed class NativeOverlayWindow : IDisposable
         nuint subclassId,
         nuint referenceData)
     {
+        if (message == WmNcLButtonDown && wParam == HtCaption && IsNoActivate)
+        {
+            // A deliberate caption drag on any utility overlay must not need a
+            // sacrificial activation click. Registered interactive controls
+            // are Passthrough regions and do not enter this path.
+            ConfigureUtilityStyles(noActivate: false);
+            _ = SetForegroundWindow(_windowHandle);
+        }
+
         if (_allowResize)
         {
             switch (message)

@@ -19,9 +19,6 @@
             BorderBrush="{ThemeResource OverlayBorderBrush}"
             BorderThickness="1"
             CornerRadius="22">
-            <Border.Shadow>
-                <ThemeShadow />
-            </Border.Shadow>
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="28" />
@@ -29,7 +26,7 @@
                     <RowDefinition Height="36" />
                 </Grid.RowDefinitions>
 
-                <Grid ColumnSpacing="8">
+                <Grid x:Name="DragHeader" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -76,6 +73,7 @@
                         </Border>
                     </StackPanel>
                     <Button
+                        x:Name="EndButton"
                         Grid.Column="2"
                         MinWidth="54"
                         Height="26"
