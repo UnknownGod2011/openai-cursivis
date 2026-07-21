@@ -2,6 +2,7 @@ using Cursivis.Application.Context;
 using Cursivis.Application.Realtime;
 using Cursivis.Domain.Interaction;
 using Cursivis.Domain.Models;
+using Cursivis.Windows.Platform.Hotkeys;
 
 namespace Cursivis.Windows.App;
 
@@ -13,7 +14,8 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
     TakeActionController takeAction,
     INavigationGuidanceService navigationGuidance,
     NavigationGuidanceConfiguration navigationConfiguration,
-    ModelIdentifier model) : ILiveModeCapabilityExecutor
+    ModelIdentifier model,
+    IWindowThreadDispatcher uiDispatcher) : ILiveModeCapabilityExecutor
 {
     private readonly IResultClipboardService _clipboard = clipboard
         ?? throw new ArgumentNullException(nameof(clipboard));
@@ -30,6 +32,8 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
     private readonly NavigationGuidanceConfiguration _navigationConfiguration = navigationConfiguration
         ?? throw new ArgumentNullException(nameof(navigationConfiguration));
     private readonly ModelIdentifier _model = model;
+    private readonly IWindowThreadDispatcher _uiDispatcher = uiDispatcher
+        ?? throw new ArgumentNullException(nameof(uiDispatcher));
 
     public async Task<LiveModeCapabilityResult> CopyAsync(
         string text,
@@ -64,8 +68,10 @@ internal sealed class WindowsLiveModeCapabilityExecutor(
         string instruction,
         CancellationToken cancellationToken = default)
     {
-        RegionContextCaptureResult capture = await _regionCapture.CaptureAsync(
-            TimeSpan.FromMinutes(5),
+        // RegionSelectionWindow is WinUI and must be created on the owner STA.
+        // Live Mode tool execution arrives on a Realtime worker thread.
+        RegionContextCaptureResult capture = await _uiDispatcher.InvokeAsync(
+            () => _regionCapture.CaptureAsync(TimeSpan.FromMinutes(5), cancellationToken),
             cancellationToken);
         if (capture.Status == RegionContextCaptureStatus.Cancelled)
         {

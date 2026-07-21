@@ -192,6 +192,16 @@
                 Visibility="Collapsed">
                 <FontIcon FontSize="10" Glyph="&#xE711;" />
             </Button>
+            <Button
+                x:Name="TranscriptToggleButton"
+                Canvas.Left="184"
+                Canvas.Top="252"
+                AutomationProperties.AutomationId="LiveTranscriptVisibility"
+                Click="OnTranscriptToggleClicked"
+                Style="{StaticResource OrbControlButtonStyle}"
+                Visibility="Collapsed">
+                <FontIcon x:Name="TranscriptToggleIcon" FontSize="11" Glyph="&#xE890;" />
+            </Button>
         </Canvas>
     </Grid>
 </Window>

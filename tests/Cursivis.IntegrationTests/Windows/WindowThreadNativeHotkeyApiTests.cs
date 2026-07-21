@@ -84,6 +84,34 @@ public sealed class WindowThreadNativeHotkeyApiTests
             }
         }
 
+        public Task<T> InvokeAsync<T>(
+            Func<Task<T>> operation,
+            CancellationToken cancellationToken = default)
+        {
+            if (HasThreadAccess)
+            {
+                return operation();
+            }
+
+            var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!TryEnqueue(() =>
+                {
+                    try
+                    {
+                        completion.TrySetResult(operation().GetAwaiter().GetResult());
+                    }
+                    catch (Exception exception)
+                    {
+                        completion.TrySetException(exception);
+                    }
+                }))
+            {
+                return Task.FromException<T>(new InvalidOperationException("Dispatcher unavailable."));
+            }
+
+            return completion.Task;
+        }
+
         public void Dispose()
         {
             _work.CompleteAdding();
@@ -106,6 +134,11 @@ public sealed class WindowThreadNativeHotkeyApiTests
         public bool HasThreadAccess => false;
 
         public bool TryEnqueue(Action action) => false;
+
+        public Task<T> InvokeAsync<T>(
+            Func<Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<T>(new InvalidOperationException("Dispatcher unavailable."));
     }
 
     private sealed class RecordingNativeHotkeyApi : INativeHotkeyApi

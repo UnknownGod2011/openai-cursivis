@@ -107,6 +107,19 @@
                                     ValueChanged="OnPauseSensitivityChanged" />
                                 <TextBlock x:Uid="PauseSensitivityHelp" Style="{StaticResource CaptionSecondaryTextStyle}" />
                             </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock FontWeight="SemiBold" Text="Live transcript panel" />
+                                <ToggleSwitch
+                                    x:Name="LiveTranscriptPanelToggle"
+                                    AutomationProperties.AutomationId="LiveTranscriptPanelVisible"
+                                    AutomationProperties.Name="Show Live transcript panel"
+                                    OffContent="Hidden"
+                                    OnContent="Visible"
+                                    Toggled="OnLiveTranscriptPanelToggled" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionSecondaryTextStyle}"
+                                    Text="The eye control beside the Live orb can change this at any time." />
+                            </StackPanel>
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>

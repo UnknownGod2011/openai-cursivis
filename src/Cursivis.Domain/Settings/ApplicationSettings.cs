@@ -135,17 +135,19 @@ public sealed record VoiceAudioSettings(
     string LanguageTag,
     string AssistantVoice,
     PauseSensitivity PauseSensitivity,
-    bool RealtimeEnabled)
+    bool RealtimeEnabled,
+    bool LiveTranscriptPanelVisible = true)
 {
     public static VoiceAudioSettings CreateDefault() => new(
         DeviceEndpointId: null,
         LanguageTag: "en-US",
         AssistantVoice: "marin",
         PauseSensitivity.Balanced,
-        RealtimeEnabled: true);
+        RealtimeEnabled: true,
+        LiveTranscriptPanelVisible: true);
 
     public override string ToString() =>
-        $"VoiceAudioSettings(DeviceEndpointId={(DeviceEndpointId is null ? "system-default" : "<redacted>")}, LanguageTag={LanguageTag}, AssistantVoice={AssistantVoice}, PauseSensitivity={PauseSensitivity}, RealtimeEnabled={RealtimeEnabled})";
+        $"VoiceAudioSettings(DeviceEndpointId={(DeviceEndpointId is null ? "system-default" : "<redacted>")}, LanguageTag={LanguageTag}, AssistantVoice={AssistantVoice}, PauseSensitivity={PauseSensitivity}, RealtimeEnabled={RealtimeEnabled}, LiveTranscriptPanelVisible={LiveTranscriptPanelVisible})";
 }
 
 public enum CaptureScope

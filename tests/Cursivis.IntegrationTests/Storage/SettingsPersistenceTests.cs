@@ -65,7 +65,28 @@ public sealed class SettingsPersistenceTests
         Assert.Equal(CaptureScope.FullDisplay, loaded.Value.Interaction.CaptureScope);
         Assert.True(loaded.Value.Interaction.CloseResultsAfterInsert);
         Assert.True(loaded.Value.Startup.LaunchAtSignIn);
+        Assert.True(loaded.Value.Voice.LiveTranscriptPanelVisible);
         Assert.Equal("Ctrl+Alt+S", loaded.Value.Hotkeys[HotkeyCommand.OpenSettings].Canonical);
+    }
+
+    [Fact]
+    public async Task ApplicationSettings_LegacyVoicePayloadDefaultsTranscriptPanelToVisible()
+    {
+        using var temporary = new TemporaryDirectory();
+        string path = System.IO.Path.Combine(temporary.Path, "application-settings.json");
+        var store = new VersionedJsonSettingsStore<ApplicationSettings>(
+            new VersionedJsonSettingsStoreOptions(path, ApplicationSettings.CurrentSchemaVersion),
+            new ApplicationSettingsJsonCodec());
+        await store.SaveAsync(ApplicationSettings.CreateDefault());
+
+        JsonObject document = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+        JsonObject voice = document["data"]!["voice"]!.AsObject();
+        voice.Remove("liveTranscriptPanelVisible");
+        await File.WriteAllTextAsync(path, document.ToJsonString());
+
+        SettingsLoadResult<ApplicationSettings> loaded = await store.LoadAsync();
+
+        Assert.True(loaded.Value.Voice.LiveTranscriptPanelVisible);
     }
 
     [Fact]

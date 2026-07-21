@@ -10,6 +10,12 @@ public interface IWindowThreadDispatcher
     bool HasThreadAccess { get; }
 
     bool TryEnqueue(Action action);
+
+    /// <summary>
+    /// Runs asynchronous work on the owner UI thread and returns its result.
+    /// Clipboard, UIA, and WinUI overlay construction require this thread.
+    /// </summary>
+    Task<T> InvokeAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

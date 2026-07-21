@@ -148,6 +148,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _orbWindow.SettingsRequested += OnSettingsRequested;
         _orbWindow.MicrophoneRequested += OnLiveModeRequested;
         _orbWindow.CancelRequested += OnOrbCancelRequested;
+        _orbWindow.LiveTranscriptVisibilityRequested += OnLiveTranscriptVisibilityRequested;
         _liveModeWindow.StopRequested += OnLiveModeRequested;
         _liveMode.SnapshotChanged += OnLiveModeSnapshotChanged;
         _smartDictation.SnapshotChanged += OnSmartDictationSnapshotChanged;
@@ -603,6 +604,14 @@ public sealed class AppRuntime : IAsyncDisposable
             new WindowsNavigationGuidanceCaptureService(foreground, screenCapture),
             navigationGuidanceInteraction,
             currentSettings.Models.ResponsesModel);
+        // Constructed early so Live Mode selection/region tools can marshal to
+        // the WinUI STA even when Realtime callbacks continue on workers.
+        var uiDispatcher = new DispatcherQueueWindowThreadDispatcher(mainWindowDispatcher);
+        var liveModeContextProvider = new LiveModeContextProvider(
+            inputSettler,
+            capture,
+            foreground,
+            uiDispatcher);
         var liveModeCapabilities = new WindowsLiveModeCapabilityExecutor(
             clipboard,
             insertion,
@@ -611,13 +620,14 @@ public sealed class AppRuntime : IAsyncDisposable
             takeActionController,
             navigationGuidance,
             navigationGuidanceConfiguration,
-            currentSettings.Models.ResponsesModel);
+            currentSettings.Models.ResponsesModel,
+            uiDispatcher);
         var liveMode = new RealtimeLiveModeService(
             realtimeGateway,
             new WindowsRealtimeAudioSessionFactory(
                 WindowsAudioDeviceCatalog.ParseDeviceNumber(currentSettings.Voice.DeviceEndpointId)),
-            new LiveModeContextProvider(inputSettler, capture, foreground),
-            new LiveModeToolExecutor(liveModeMemory, liveModeCapabilities),
+            liveModeContextProvider,
+            new LiveModeToolExecutor(liveModeMemory, liveModeCapabilities, liveModeContextProvider),
             currentSettings.Models.RealtimeModel.Value);
         var smartDictation = new SmartDictationService(
             new WindowsDictationAudioCaptureFactory(
@@ -643,7 +653,7 @@ public sealed class AppRuntime : IAsyncDisposable
         var messageHook = new Win32WindowMessageHook(mainWindowHandle);
         var hotkeyPersister = new JsonHotkeyStatePersister(paths.HotkeysFile);
         INativeHotkeyApi nativeHotkeys = new WindowThreadNativeHotkeyApi(
-            new DispatcherQueueWindowThreadDispatcher(mainWindowDispatcher),
+            uiDispatcher,
             new Win32NativeHotkeyApi());
         var hotkeys = new TransactionalHotkeyRegistrar(
             mainWindowHandle,
@@ -811,6 +821,7 @@ public sealed class AppRuntime : IAsyncDisposable
         _orbWindow.SettingsRequested -= OnSettingsRequested;
         _orbWindow.MicrophoneRequested -= OnLiveModeRequested;
         _orbWindow.CancelRequested -= OnOrbCancelRequested;
+        _orbWindow.LiveTranscriptVisibilityRequested -= OnLiveTranscriptVisibilityRequested;
         _liveModeWindow.StopRequested -= OnLiveModeRequested;
         _liveMode.SnapshotChanged -= OnLiveModeSnapshotChanged;
         _smartDictation.SnapshotChanged -= OnSmartDictationSnapshotChanged;
@@ -1083,11 +1094,10 @@ public sealed class AppRuntime : IAsyncDisposable
         if (snapshot.State == LiveModeState.Ended)
         {
             _liveModeWindow.Hide();
-            _orbWindow.ShowLiveState(
+            _orbWindow.ShowState(
                 OrbPresentationState.Done,
                 "Live Mode ended",
-                "Conversation closed",
-                0);
+                "Conversation closed");
             _liveCompletionVisibilityCancellation = new CancellationTokenSource();
             _ = HideCompletedLiveOrbAsync(_liveCompletionVisibilityCancellation.Token);
             return;
@@ -1117,8 +1127,56 @@ public sealed class AppRuntime : IAsyncDisposable
             LiveModeState.Connecting => "Opening a secure Realtime session",
             _ => snapshot.Status,
         };
-        _orbWindow.ShowLiveState(orbState, snapshot.Status, detail, snapshot.AudioLevel);
-        _liveModeWindow.ShowSnapshot(snapshot, _orbWindow.OverlayBounds);
+        bool transcriptVisible = CurrentSettings.Voice.LiveTranscriptPanelVisible;
+        _orbWindow.ShowLiveState(
+            orbState,
+            snapshot.Status,
+            detail,
+            snapshot.AudioLevel,
+            transcriptVisible);
+        if (transcriptVisible)
+        {
+            _liveModeWindow.ShowSnapshot(snapshot, _orbWindow.OverlayBounds);
+        }
+        else
+        {
+            _liveModeWindow.Hide();
+        }
+    }
+
+    private void OnLiveTranscriptVisibilityRequested(
+        object? sender,
+        LiveTranscriptVisibilityRequestedEventArgs args) =>
+        _ = UpdateLiveTranscriptVisibilityAsync(args.Visible);
+
+    private async Task UpdateLiveTranscriptVisibilityAsync(bool visible)
+    {
+        try
+        {
+            await UpdateApplicationSettingsAsync(settings => settings with
+            {
+                Voice = settings.Voice with { LiveTranscriptPanelVisible = visible },
+            });
+
+            LiveModeSnapshot snapshot = _liveMode.Snapshot;
+            if (snapshot.State == LiveModeState.Ended)
+            {
+                return;
+            }
+
+            ApplyLiveModeSnapshot(snapshot);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            // Keep the prior persisted preference intact if settings storage is
+            // unavailable. Reapply the current snapshot immediately so the eye
+            // control and transcript cannot imply a preference was saved.
+            if (_liveMode.Snapshot.State != LiveModeState.Ended)
+            {
+                ApplyLiveModeSnapshot(_liveMode.Snapshot);
+            }
+        }
     }
 
     private async Task HideCompletedLiveOrbAsync(CancellationToken cancellationToken)

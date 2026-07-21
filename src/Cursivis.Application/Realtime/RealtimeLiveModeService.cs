@@ -162,7 +162,11 @@ public sealed class RealtimeLiveModeService : IRealtimeLiveModeService
         {
             LiveModeContext context = await _contextProvider.CaptureAsync(cancellationToken)
                 .ConfigureAwait(false);
-            session = await _gateway.ConnectAsync(_sessionOptions, cancellationToken)
+            RealtimeSessionOptions sessionOptions = _sessionOptions with
+            {
+                ContextInstructions = BuildContextInstructions(context),
+            };
+            session = await _gateway.ConnectAsync(sessionOptions, cancellationToken)
                 .ConfigureAwait(false);
             audio = await _audioFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
 
@@ -390,6 +394,41 @@ public sealed class RealtimeLiveModeService : IRealtimeLiveModeService
         }
 
         SnapshotChanged?.Invoke(next);
+    }
+
+    private static string? BuildContextInstructions(LiveModeContext context)
+    {
+        var parts = new List<string>(3);
+        if (!string.IsNullOrWhiteSpace(context.ActiveApplication))
+        {
+            string title = string.IsNullOrWhiteSpace(context.ActiveWindowTitle)
+                ? string.Empty
+                : $" ({context.ActiveWindowTitle.Trim()})";
+            parts.Add($"Active application: {context.ActiveApplication.Trim()}{title}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(context.SelectedText))
+        {
+            string text = context.SelectedText.Trim();
+            if (text.Length > 4_000)
+            {
+                text = text[..4_000] + "…";
+            }
+
+            parts.Add(
+                "The user had this text selected when Live Mode started. " +
+                "Use get_selected_text if you need a refreshed capture:\n" +
+                text);
+        }
+        else
+        {
+            parts.Add(
+                "No selected text was captured at Live Mode start. " +
+                "Call get_selected_text after the user selects text, or " +
+                "analyze_screen_region when they ask to look at the screen.");
+        }
+
+        return parts.Count == 0 ? null : string.Join('\n', parts);
     }
 
     private static async Task IgnoreSessionCancellationAsync(Task task)

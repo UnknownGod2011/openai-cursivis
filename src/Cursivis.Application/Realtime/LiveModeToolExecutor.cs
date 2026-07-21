@@ -54,7 +54,7 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
     [
         new(
             "get_selected_text",
-            "Return the text selected when this Live Mode session began, if any.",
+            "Return the user's currently selected text. Prefer a fresh capture; fall back to the selection from when Live Mode started.",
             EmptyObjectSchema),
         new(
             "get_active_application",
@@ -108,14 +108,17 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
 
     private readonly ILiveModeMemoryStore? _memory;
     private readonly ILiveModeCapabilityExecutor? _capabilities;
+    private readonly ILiveModeContextProvider? _contextProvider;
     private readonly IReadOnlyList<RealtimeToolDefinition> _definitions;
 
     public LiveModeToolExecutor(
         ILiveModeMemoryStore? memory = null,
-        ILiveModeCapabilityExecutor? capabilities = null)
+        ILiveModeCapabilityExecutor? capabilities = null,
+        ILiveModeContextProvider? contextProvider = null)
     {
         _memory = memory;
         _capabilities = capabilities;
+        _contextProvider = contextProvider;
         _definitions = BaseDefinitions
             .Concat(memory is null ? [] : MemoryDefinitions)
             .Concat(capabilities is null ? [] : CapabilityDefinitions)
@@ -138,11 +141,25 @@ public sealed class LiveModeToolExecutor : ILiveModeToolExecutor
         {
             case "get_selected_text":
                 ValidateEmptyArguments(untrustedArgumentsJson);
+                LiveModeContext selection = context;
+                if (_contextProvider is not null)
+                {
+                    // Fresh capture on the UI thread. Session-start text is only
+                    // a fallback when the user no longer has a selection.
+                    LiveModeContext refreshed = await _contextProvider
+                        .CaptureAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(refreshed.SelectedText))
+                    {
+                        selection = refreshed;
+                    }
+                }
+
                 return Json(new
                 {
-                    available = !string.IsNullOrWhiteSpace(context.SelectedText),
-                    text = context.SelectedText,
-                    contextFingerprint = context.ContextFingerprint,
+                    available = !string.IsNullOrWhiteSpace(selection.SelectedText),
+                    text = selection.SelectedText,
+                    contextFingerprint = selection.ContextFingerprint,
                 });
             case "get_active_application":
                 ValidateEmptyArguments(untrustedArgumentsJson);

@@ -13,7 +13,6 @@
         Background="Transparent">
         <Border
             x:Name="Shell"
-            Margin="6"
             Padding="14,11,12,11"
             Background="{ThemeResource OverlayShellBrush}"
             BorderBrush="{ThemeResource OverlayBorderBrush}"

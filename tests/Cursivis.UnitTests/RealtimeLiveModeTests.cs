@@ -121,6 +121,23 @@ public sealed class RealtimeLiveModeTests
     }
 
     [Fact]
+    public async Task LiveService_SendsCapturedSelectionAsBoundedSessionContext()
+    {
+        var gateway = new FakeRealtimeGateway();
+        gateway.Session.Publish(ServerEvent(RealtimeServerEventKind.Connected));
+        var audio = new FakeRealtimeAudioSession();
+        await using var service = CreateService(gateway, audio);
+
+        await service.StartAsync();
+
+        string context = Assert.IsType<string>(gateway.Options!.ContextInstructions);
+        Assert.Contains("Selected context", context, StringComparison.Ordinal);
+        Assert.Contains("notepad", context, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("get_selected_text", context, StringComparison.Ordinal);
+        await service.StopAsync();
+    }
+
+    [Fact]
     public async Task LiveService_ToolCallUsesCapturedContextAndReturnsTypedResult()
     {
         var gateway = new FakeRealtimeGateway();

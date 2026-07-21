@@ -66,6 +66,7 @@ public sealed partial class VoicePage : Page
                 PauseSensitivity.Patient => 0,
                 _ => 2,
             };
+            LiveTranscriptPanelToggle.IsOn = runtime.CurrentSettings.Voice.LiveTranscriptPanelVisible;
             RealtimeConnectionTestButton.IsEnabled = endpoints.Count > 0 && runtime.CredentialManager.HasSavedKey;
         }
         finally
@@ -78,6 +79,9 @@ public sealed partial class VoicePage : Page
         _ = PersistPreferencesAsync();
 
     private void OnPauseSensitivityChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs args) =>
+        _ = PersistPreferencesAsync();
+
+    private void OnLiveTranscriptPanelToggled(object sender, RoutedEventArgs args) =>
         _ = PersistPreferencesAsync();
 
     private async Task PersistPreferencesAsync()
@@ -102,6 +106,7 @@ public sealed partial class VoicePage : Page
                 {
                     DeviceEndpointId = endpoint,
                     PauseSensitivity = pause,
+                    LiveTranscriptPanelVisible = LiveTranscriptPanelToggle.IsOn,
                 },
             });
         }

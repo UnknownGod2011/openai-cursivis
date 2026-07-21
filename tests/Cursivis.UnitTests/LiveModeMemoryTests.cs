@@ -76,11 +76,58 @@ public sealed class LiveModeMemoryTests
             "{\"instruction\":\"Open the accessibility settings\"}");
         Assert.Contains("navigation", navigated.Json, StringComparison.OrdinalIgnoreCase);
 
+        LiveModeToolExecutionResult analyzed = await executor.ExecuteAsync(
+            LiveModeContext.Empty,
+            "analyze_screen_region",
+            "{\"instruction\":\"Describe the visible error message\"}");
+        Assert.Equal("Describe the visible error message", capabilities.AnalyzedInstruction);
+        Assert.Contains("analyzed", analyzed.Json, StringComparison.OrdinalIgnoreCase);
+
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await executor.ExecuteAsync(
                 LiveModeContext.Empty,
                 "copy_text",
                 "{\"text\":\"safe\",\"extra\":true}"));
+    }
+
+    [Fact]
+    public async Task ToolExecutor_GetSelectedText_PrefersFreshCaptureOverSessionStart()
+    {
+        var provider = new FakeContextProvider(new LiveModeContext(
+            "fresh selection",
+            "fp-fresh",
+            "notepad",
+            "Draft",
+            null));
+        var executor = new LiveModeToolExecutor(contextProvider: provider);
+        var sessionStart = new LiveModeContext(
+            "stale selection",
+            "fp-stale",
+            "chrome",
+            "Search",
+            null);
+
+        LiveModeToolExecutionResult result = await executor.ExecuteAsync(
+            sessionStart,
+            "get_selected_text",
+            "{}");
+
+        using JsonDocument document = JsonDocument.Parse(result.Json);
+        Assert.True(document.RootElement.GetProperty("available").GetBoolean());
+        Assert.Equal("fresh selection", document.RootElement.GetProperty("text").GetString());
+        Assert.Equal("fp-fresh", document.RootElement.GetProperty("contextFingerprint").GetString());
+        Assert.Equal(1, provider.CallCount);
+    }
+
+    private sealed class FakeContextProvider(LiveModeContext context) : ILiveModeContextProvider
+    {
+        public int CallCount { get; private set; }
+
+        public Task<LiveModeContext> CaptureAsync(CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(context);
+        }
     }
 
     private sealed class FakeMemoryStore : ILiveModeMemoryStore
@@ -117,6 +164,8 @@ public sealed class LiveModeMemoryTests
     {
         public List<string> Copied { get; } = [];
 
+        public string? AnalyzedInstruction { get; private set; }
+
         public Task<LiveModeCapabilityResult> CopyAsync(string text, CancellationToken cancellationToken = default)
         {
             Copied.Add(text);
@@ -126,8 +175,11 @@ public sealed class LiveModeMemoryTests
         public Task<LiveModeCapabilityResult> InsertAsync(LiveModeContext context, string text, CancellationToken cancellationToken = default) =>
             Task.FromResult(new LiveModeCapabilityResult(true, "inserted"));
 
-        public Task<LiveModeCapabilityResult> AnalyzeScreenAsync(string instruction, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new LiveModeCapabilityResult(true, "analyzed", "result"));
+        public Task<LiveModeCapabilityResult> AnalyzeScreenAsync(string instruction, CancellationToken cancellationToken = default)
+        {
+            AnalyzedInstruction = instruction;
+            return Task.FromResult(new LiveModeCapabilityResult(true, "analyzed", "result"));
+        }
 
         public Task<LiveModeCapabilityResult> TakeBrowserActionAsync(string instruction, CancellationToken cancellationToken = default) =>
             Task.FromResult(new LiveModeCapabilityResult(true, "completed"));

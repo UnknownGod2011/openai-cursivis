@@ -33,6 +33,7 @@ public sealed partial class ContextOrbWindow : Window
     private GuidedOption[] _guidedOptions = [];
     private bool _awaitingBorderlessFrame;
     private int _borderlessFrames;
+    private bool _liveTranscriptPanelVisible = true;
 
     public ContextOrbWindow()
     {
@@ -71,6 +72,8 @@ public sealed partial class ContextOrbWindow : Window
 
     public event EventHandler? SettingsRequested;
 
+    public event EventHandler<LiveTranscriptVisibilityRequestedEventArgs>? LiveTranscriptVisibilityRequested;
+
     public event EventHandler<GuidedOperationRequestedEventArgs>? GuidedOperationRequested;
 
     public bool IsVisible => _overlay.IsVisible;
@@ -82,6 +85,7 @@ public sealed partial class ContextOrbWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
         ArgumentException.ThrowIfNullOrWhiteSpace(detail);
         SetGuidedPanelVisible(false);
+        SetLiveTranscriptToggleVisible(false, false);
         DetailText.Visibility = Visibility.Collapsed;
         ApplyState(state, status, detail);
         ShowWithoutActivation();
@@ -91,11 +95,13 @@ public sealed partial class ContextOrbWindow : Window
         OrbPresentationState state,
         string status,
         string detail,
-        float audioLevel)
+        float audioLevel,
+        bool transcriptPanelVisible)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
         ArgumentException.ThrowIfNullOrWhiteSpace(detail);
         SetGuidedPanelVisible(false);
+        SetLiveTranscriptToggleVisible(true, transcriptPanelVisible);
         DetailText.Visibility = Visibility.Visible;
         ApplyState(state, status, detail, animateLiveState: true);
         // Live Mode alone gets a compact, restrained halo. Ordinary workflow
@@ -115,6 +121,7 @@ public sealed partial class ContextOrbWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
         ArgumentException.ThrowIfNullOrWhiteSpace(detail);
         SetGuidedPanelVisible(false);
+        SetLiveTranscriptToggleVisible(false, false);
         DetailText.Visibility = Visibility.Visible;
         ApplyState(state, status, detail);
         // Smart Dictation is a bounded one-shot workflow. Keep the original
@@ -160,6 +167,7 @@ public sealed partial class ContextOrbWindow : Window
     public void Hide()
     {
         SetGuidedPanelVisible(false);
+        SetLiveTranscriptToggleVisible(false, false);
         DetailText.Visibility = Visibility.Collapsed;
         StateRing.Visibility = Visibility.Collapsed;
         StateRing.Opacity = 0.16;
@@ -338,6 +346,25 @@ public sealed partial class ContextOrbWindow : Window
     private void OnCancelClicked(object sender, RoutedEventArgs args) =>
         CancelRequested?.Invoke(this, EventArgs.Empty);
 
+    private void OnTranscriptToggleClicked(object sender, RoutedEventArgs args) =>
+        LiveTranscriptVisibilityRequested?.Invoke(
+            this,
+            new LiveTranscriptVisibilityRequestedEventArgs(!_liveTranscriptPanelVisible));
+
+    private void SetLiveTranscriptToggleVisible(bool visible, bool transcriptPanelVisible)
+    {
+        _liveTranscriptPanelVisible = transcriptPanelVisible;
+        TranscriptToggleButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        TranscriptToggleIcon.Glyph = transcriptPanelVisible ? "\uE890" : "\uE7B3";
+        AutomationProperties.SetName(
+            TranscriptToggleButton,
+            transcriptPanelVisible ? "Hide Live transcript panel" : "Show Live transcript panel");
+        ToolTipService.SetToolTip(
+            TranscriptToggleButton,
+            transcriptPanelVisible ? "Hide transcript" : "Show transcript");
+        ApplyVisibleWindowRegion();
+    }
+
     private void OnGuidedOperationClicked(object sender, RoutedEventArgs args)
     {
         if (sender is Button { Tag: GuidedOption option })
@@ -492,6 +519,11 @@ public sealed partial class ContextOrbWindow : Window
             shapes.Add(new OverlayRegionShape(145, 250, 30, 30, cornerRadius: 15));
         }
 
+        if (TranscriptToggleButton.Visibility == Visibility.Visible)
+        {
+            shapes.Add(new OverlayRegionShape(182, 250, 30, 30, cornerRadius: 15));
+        }
+
         AddGuidedChipRegion(ActionChipTop, 106, 18, shapes);
         AddGuidedChipRegion(ActionChipUpperRight, 206, 80, shapes);
         AddGuidedChipRegion(ActionChipLowerRight, 206, 200, shapes);
@@ -584,4 +616,9 @@ public sealed class GuidedOperationRequestedEventArgs(
     GuidedOption option) : EventArgs
 {
     public GuidedOption Option { get; } = option ?? throw new ArgumentNullException(nameof(option));
+}
+
+public sealed class LiveTranscriptVisibilityRequestedEventArgs(bool visible) : EventArgs
+{
+    public bool Visible { get; } = visible;
 }

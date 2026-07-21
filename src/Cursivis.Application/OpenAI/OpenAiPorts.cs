@@ -69,7 +69,8 @@ public sealed record RealtimeSessionOptions(
     string Voice,
     string? Language,
     bool SemanticVad,
-    IReadOnlyList<RealtimeToolDefinition> Tools);
+    IReadOnlyList<RealtimeToolDefinition> Tools,
+    string? ContextInstructions = null);
 
 public sealed record RealtimeToolDefinition(
     string Name,
