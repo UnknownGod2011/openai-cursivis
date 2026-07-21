@@ -97,7 +97,7 @@
                             <TextBlock x:Uid="OverviewQualityDefault" TextWrapping="Wrap" />
                             <TextBlock x:Uid="OverviewQuickTaskDefault" TextWrapping="Wrap" />
                             <TextBlock x:Uid="OverviewCaptureDefault" TextWrapping="Wrap" />
-                            <TextBlock x:Uid="OverviewStartupDefault" TextWrapping="Wrap" />
+                            <TextBlock x:Name="StartupStatusText" TextWrapping="Wrap" />
                         </StackPanel>
                     </controls:SettingsCard.Body>
                 </controls:SettingsCard>

@@ -225,7 +225,8 @@
   <data name="OverviewQualityDefault.Text" xml:space="preserve"><value>Quality profile: Balanced · gpt-5.6-terra</value></data>
   <data name="OverviewQuickTaskDefault.Text" xml:space="preserve"><value>Quick Task: Prompt Optimizer · text only · output only the optimized prompt</value></data>
   <data name="OverviewCaptureDefault.Text" xml:space="preserve"><value>Capture: active window · visible, user-triggered screen access only</value></data>
-  <data name="OverviewStartupDefault.Text" xml:space="preserve"><value>Launch at sign-in: Off</value></data>
+  <data name="OverviewStartupEnabled" xml:space="preserve"><value>Launch at sign-in: On</value></data>
+  <data name="OverviewStartupDisabled" xml:space="preserve"><value>Launch at sign-in: Off</value></data>
 
   <data name="OpenAiKeyCard.Header" xml:space="preserve"><value>API key</value></data>
   <data name="OpenAiKeyCard.Description" xml:space="preserve"><value>A production key belongs in current-user secure storage. A saved key is not considered tested until a real connection check succeeds.</value></data>

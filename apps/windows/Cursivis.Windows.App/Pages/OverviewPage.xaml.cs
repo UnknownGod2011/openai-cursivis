@@ -53,6 +53,11 @@ public sealed partial class OverviewPage : Page
         {
             OverviewHeader.StatusDetail = ResourceText.Get("OverviewHotkeysBrowserPendingDetail");
         }
+
+        StartupStatusText.Text = ResourceText.Get(
+            runtime.IsLaunchAtSignInEnabled
+                ? "OverviewStartupEnabled"
+                : "OverviewStartupDisabled");
     }
 
     private static bool IsActive(HotkeyUpdateResult result) => result.Status is
