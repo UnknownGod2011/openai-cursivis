@@ -1,5 +1,5 @@
 const releaseDownload =
-  "https://github.com/UnknownGod2011/openai-cursivis/releases/latest/download/Cursivis-Setup-x64.exe";
+  "https://github.com/UnknownGod2011/openai-cursivis/releases/download/v0.1.0-beta.4/Cursivis-Setup-0.1.0-beta.4-x64.exe";
 
 const features = [
   {
